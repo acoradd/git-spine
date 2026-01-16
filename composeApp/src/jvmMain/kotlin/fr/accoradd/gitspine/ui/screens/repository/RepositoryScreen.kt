@@ -16,6 +16,9 @@ import fr.accoradd.gitspine.ui.components.repository.CommitData
 import fr.accoradd.gitspine.ui.components.repository.CommitList
 import fr.accoradd.gitspine.ui.components.repository.RepositoryLeftPanel
 import fr.accoradd.gitspine.ui.viewmodel.GraphViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import java.time.format.DateTimeFormatter
 
@@ -35,6 +38,8 @@ fun RepositoryScreen(
     var commits by remember { mutableStateOf<List<Commit>>(emptyList()) }
     var tags by remember { mutableStateOf<List<String>>(emptyList()) }
     var selectedCommit by remember { mutableStateOf<Commit?>(null) }
+    var isLoadingMore by remember { mutableStateOf(false) }
+    var hasMoreCommits by remember { mutableStateOf(true) }
 
     // Load repository data when active tab changes
     LaunchedEffect(activeTabId) {
@@ -46,6 +51,8 @@ fun RepositoryScreen(
         commits = emptyList()
         tags = emptyList()
         selectedCommit = null
+        hasMoreCommits = true
+        isLoadingMore = false
 
         if (activeTab == null) {
             println("RepositoryScreen: No active tab, closing repository")
@@ -73,18 +80,16 @@ fun RepositoryScreen(
 
     LaunchedEffect(activeTabId) {
         activeTab?.let {
-            println("RepositoryScreen: Loading commits for ${activeTab.path}")
+            println("RepositoryScreen: Loading initial commits for ${activeTab.path}")
             try {
-                // Load commits
-                gitRepository.getCommits().collect { loadedCommits ->
-                    println("RepositoryScreen: Loaded ${loadedCommits.size} commits")
+                // Load initial commits (first 100)
+                gitRepository.getCommits(skip = 0, limit = 100).collect { loadedCommits ->
+                    println("RepositoryScreen: Loaded ${loadedCommits.size} initial commits")
                     commits = loadedCommits
-                    if (selectedCommit == null && loadedCommits.isNotEmpty()) {
+                    hasMoreCommits = loadedCommits.size == 100
+
+                    if (loadedCommits.isNotEmpty()) {
                         selectedCommit = loadedCommits.first()
-                    } else if (loadedCommits.isNotEmpty()) {
-                        // Update selected commit if it still exists in the new list
-                        selectedCommit = loadedCommits.find { it.id == selectedCommit?.id }
-                            ?: loadedCommits.first()
                     } else {
                         selectedCommit = null
                     }
@@ -92,6 +97,29 @@ fun RepositoryScreen(
             } catch (e: Exception) {
                 println("Error loading commits: ${e.message}")
                 e.printStackTrace()
+            }
+        }
+    }
+
+    // Function to load more commits
+    fun loadMoreCommits() {
+        if (isLoadingMore || !hasMoreCommits || activeTab == null) return
+
+        isLoadingMore = true
+        println("RepositoryScreen: Loading more commits, current count: ${commits.size}")
+
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                gitRepository.getCommits(skip = commits.size, limit = 100).collect { loadedCommits ->
+                    println("RepositoryScreen: Loaded ${loadedCommits.size} more commits")
+                    commits = commits + loadedCommits
+                    hasMoreCommits = loadedCommits.size == 100
+                    isLoadingMore = false
+                }
+            } catch (e: Exception) {
+                println("Error loading more commits: ${e.message}")
+                e.printStackTrace()
+                isLoadingMore = false
             }
         }
     }
@@ -134,7 +162,9 @@ fun RepositoryScreen(
                 selectedCommit = selectedCommit,
                 onCommitClick = { commit ->
                     selectedCommit = commit
-                }
+                },
+                onLoadMore = { loadMoreCommits() },
+                hasMore = hasMoreCommits && !isLoadingMore
             )
         },
         rightContent = {
@@ -173,7 +203,9 @@ private fun LeftPanel(
 private fun CenterPanel(
     commits: List<Commit>,
     selectedCommit: Commit?,
-    onCommitClick: (Commit) -> Unit
+    onCommitClick: (Commit) -> Unit,
+    onLoadMore: () -> Unit,
+    hasMore: Boolean
 ) {
     val dateFormatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm") }
 
@@ -199,7 +231,9 @@ private fun CenterPanel(
             commits.find { it.id == commitData.hash }?.let { commit ->
                 onCommitClick(commit)
             }
-        }
+        },
+        onLoadMore = onLoadMore,
+        hasMore = hasMore
     )
 }
 

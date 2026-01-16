@@ -34,7 +34,7 @@ class JGitRepository : GitRepository {
         println("JGitRepository: Repository closed")
     }
 
-    override fun getCommits(): Flow<List<Commit>> = flow {
+    override fun getCommits(skip: Int, limit: Int): Flow<List<Commit>> = flow {
         val repository = repo ?: run {
             emit(emptyList())
             return@flow
@@ -44,23 +44,27 @@ class JGitRepository : GitRepository {
         val git = Git(repository)
 
         try {
-            val logs = git.log().setMaxCount(1000).call()
+            val logs = git.log().setMaxCount(skip + limit).call()
 
-            for (revCommit in logs) {
-                commits.add(
-                    Commit(
-                        id = revCommit.name,
-                        shortId = revCommit.name.take(7),
-                        message = revCommit.shortMessage,
-                        author = Author(
-                            name = revCommit.authorIdent.name,
-                            email = revCommit.authorIdent.emailAddress
-                        ),
-                        timestamp = Instant.ofEpochSecond(revCommit.commitTime.toLong()),
-                        parents = revCommit.parents.map { it.name }
+            // Skip the first 'skip' commits and take 'limit' commits
+            logs.asSequence()
+                .drop(skip)
+                .take(limit)
+                .forEach { revCommit ->
+                    commits.add(
+                        Commit(
+                            id = revCommit.name,
+                            shortId = revCommit.name.take(7),
+                            message = revCommit.shortMessage,
+                            author = Author(
+                                name = revCommit.authorIdent.name,
+                                email = revCommit.authorIdent.emailAddress
+                            ),
+                            timestamp = Instant.ofEpochSecond(revCommit.commitTime.toLong()),
+                            parents = revCommit.parents.map { it.name }
+                        )
                     )
-                )
-            }
+                }
         } catch (e: Exception) {
             // Log error but return empty list
             println("Error loading commits: ${e.message}")

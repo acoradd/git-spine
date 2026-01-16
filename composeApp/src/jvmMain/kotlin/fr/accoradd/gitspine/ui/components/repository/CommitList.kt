@@ -1,10 +1,13 @@
 package fr.accoradd.gitspine.ui.components.repository
 
+import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +39,8 @@ data class CommitData(
 fun CommitList(
     commits: List<CommitData> = emptyList(),
     onCommitClick: (CommitData) -> Unit = {},
+    onLoadMore: () -> Unit = {},
+    hasMore: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val columns = remember {
@@ -51,6 +56,19 @@ fun CommitList(
     val columnWidths = remember {
         mutableStateMapOf<String, Float>().apply {
             columns.forEach { put(it.id, it.defaultWidth) }
+        }
+    }
+
+    val listState = rememberLazyListState()
+
+    // Détecter quand on arrive vers la fin de la liste
+    LaunchedEffect(listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index) {
+        val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+        val totalItems = listState.layoutInfo.totalItemsCount
+
+        // Charger plus quand on est à 10 éléments de la fin
+        if (hasMore && totalItems > 0 && lastVisibleIndex >= totalItems - 10) {
+            onLoadMore()
         }
     }
 
@@ -73,22 +91,49 @@ fun CommitList(
                 thickness = 1.dp
             )
 
-            // Commit list
-            LazyColumn(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(commits) { commit ->
-                    CommitRow(
-                        commit = commit,
-                        columns = columns,
-                        columnWidths = columnWidths,
-                        onClick = { onCommitClick(commit) }
-                    )
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                        thickness = 0.5.dp
-                    )
+            // Commit list with scrollbar
+            Box(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = listState
+                ) {
+                    items(commits) { commit ->
+                        CommitRow(
+                            commit = commit,
+                            columns = columns,
+                            columnWidths = columnWidths,
+                            onClick = { onCommitClick(commit) }
+                        )
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                            thickness = 0.5.dp
+                        )
+                    }
+
+                    // Loading indicator at the end if there's more
+                    if (hasMore) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            }
+                        }
+                    }
                 }
+
+                VerticalScrollbar(
+                    adapter = rememberScrollbarAdapter(listState),
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                )
             }
         }
     }

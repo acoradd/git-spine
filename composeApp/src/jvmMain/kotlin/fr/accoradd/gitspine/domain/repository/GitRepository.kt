@@ -6,7 +6,7 @@ import fr.accoradd.gitspine.domain.model.GraphNode
 import kotlinx.coroutines.flow.Flow
 
 interface GitRepository {
-    fun getCommits(): Flow<List<Commit>>
+    fun getCommits(skip: Int = 0, limit: Int = 1000): Flow<List<Commit>>
     fun getBranches(): Flow<List<Branch>>
     fun getTags(): Flow<List<String>>
     fun getGraph(): Flow<List<GraphNode>>
