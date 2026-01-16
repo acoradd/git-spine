@@ -2,10 +2,18 @@ package fr.accoradd.gitspine.ui.components.tabs
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -20,13 +28,15 @@ fun TabBar(
     onTabSelect: (String) -> Unit,
     onTabClose: (String) -> Unit,
     onAddClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceContainer)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(start = 8.dp)
+            .height(40.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Tabs
@@ -40,17 +50,59 @@ fun TabBar(
             Spacer(modifier = Modifier.width(4.dp))
         }
 
+        // Spacer to push buttons to the right
+        Spacer(modifier = Modifier.weight(1f))
+
         // Add button
-        IconButton(
+        ToolbarIconButton(
             onClick = onAddClick,
-            modifier = Modifier.size(32.dp)
-        ) {
-            Text(
-                text = "+",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+            icon = Icons.Default.Add,
+            contentDescription = "Add repository"
+        )
+
+        // Settings button
+        ToolbarIconButton(
+            onClick = onSettingsClick,
+            icon = Icons.Default.Settings,
+            contentDescription = "Settings"
+        )
+    }
+}
+
+@Composable
+private fun ToolbarIconButton(
+    onClick: () -> Unit,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    modifier: Modifier = Modifier
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+
+    val backgroundColor = if (isHovered) {
+        MaterialTheme.colorScheme.surfaceContainerHighest
+    } else {
+        MaterialTheme.colorScheme.surfaceContainer
+    }
+
+    Box(
+        modifier = modifier
+            .size(40.dp)
+            .background(backgroundColor)
+            .hoverable(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 
@@ -73,6 +125,7 @@ private fun TabItem(
             .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
             .background(backgroundColor)
             .clickable { onClick() }
+            .fillMaxHeight()
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

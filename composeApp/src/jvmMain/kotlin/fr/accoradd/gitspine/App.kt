@@ -23,6 +23,7 @@ fun App() {
     val activeTabId by tabsManager.activeTabId.collectAsState()
 
     var showOpenDialog by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
 
     GitSpineTheme(appTheme = Theme.SYSTEM) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -33,7 +34,8 @@ fun App() {
                     activeTabId = activeTabId,
                     onTabSelect = { tabsManager.selectTab(it) },
                     onTabClose = { tabsManager.closeTab(it) },
-                    onAddClick = { showOpenDialog = true }
+                    onAddClick = { showOpenDialog = true },
+                    onSettingsClick = { showSettings = true }
                 )
             }
 
@@ -62,5 +64,11 @@ fun App() {
             }
             showOpenDialog = false
         }
+    }
+
+    // TODO: Settings dialog
+    if (showSettings) {
+        // Will be implemented later
+        showSettings = false
     }
 }
