@@ -8,11 +8,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import fr.accoradd.gitspine.domain.model.Tab
+import fr.accoradd.gitspine.ui.components.common.AddRepositoryMenu
 import fr.accoradd.gitspine.ui.components.common.ToolbarIconButton
 
 @Composable
@@ -21,10 +22,12 @@ fun TabBar(
     activeTabId: String?,
     onTabSelect: (String) -> Unit,
     onTabClose: (String) -> Unit,
-    onAddClick: () -> Unit,
     onSettingsClick: () -> Unit,
+    onOpenExisting: () -> Unit,
+    onCloneRemote: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showAddMenu by remember { mutableStateOf(false) }
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -53,11 +56,20 @@ fun TabBar(
 
         // Fixed icons on the right
         Row(verticalAlignment = Alignment.CenterVertically) {
-            ToolbarIconButton(
-                onClick = onAddClick,
-                icon = Icons.Default.Add,
-                contentDescription = "Add repository"
-            )
+            Box {
+                ToolbarIconButton(
+                    onClick = { showAddMenu = true },
+                    icon = Icons.Default.Add,
+                    contentDescription = "Add repository"
+                )
+
+                AddRepositoryMenu(
+                    expanded = showAddMenu,
+                    onDismiss = { showAddMenu = false },
+                    onOpenExisting = onOpenExisting,
+                    onCloneRemote = onCloneRemote
+                )
+            }
 
             ToolbarIconButton(
                 onClick = onSettingsClick,

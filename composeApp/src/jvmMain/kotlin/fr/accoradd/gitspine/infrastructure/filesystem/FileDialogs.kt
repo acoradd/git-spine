@@ -7,6 +7,8 @@ import com.sun.jna.platform.win32.COM.COMUtils
 import com.sun.jna.platform.win32.Guid.CLSID
 import com.sun.jna.platform.win32.Guid.IID
 import com.sun.jna.ptr.PointerByReference
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.awt.FileDialog
 import java.awt.Frame
 import java.io.File
@@ -17,8 +19,8 @@ object FileDialogs {
     private val isWindows = System.getProperty("os.name").lowercase().contains("windows")
     private val isMac = System.getProperty("os.name").lowercase().contains("mac")
 
-    fun openDirectory(title: String = "Open Repository"): Path? {
-        return when {
+    suspend fun openDirectory(title: String = "Open Repository"): Path? = withContext(Dispatchers.IO) {
+        when {
             isWindows -> openDirectoryWindows(title)
             isMac -> openDirectoryMac(title)
             else -> openDirectoryLinux(title)
