@@ -25,6 +25,7 @@ fun TabBar(
     onSettingsClick: () -> Unit,
     onOpenExisting: () -> Unit,
     onCloneRemote: () -> Unit,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     var showAddMenu by remember { mutableStateOf(false) }
@@ -58,13 +59,16 @@ fun TabBar(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box {
                 ToolbarIconButton(
-                    onClick = { showAddMenu = true },
+                    onClick = {
+                        if (enabled) showAddMenu = true
+                    },
                     icon = Icons.Default.Add,
-                    contentDescription = "Add repository"
+                    contentDescription = "Add repository",
+                    enabled = enabled
                 )
 
                 AddRepositoryMenu(
-                    expanded = showAddMenu,
+                    expanded = showAddMenu && enabled,
                     onDismiss = { showAddMenu = false },
                     onOpenExisting = onOpenExisting,
                     onCloneRemote = onCloneRemote
@@ -74,7 +78,8 @@ fun TabBar(
             ToolbarIconButton(
                 onClick = onSettingsClick,
                 icon = Icons.Default.Settings,
-                contentDescription = "Settings"
+                contentDescription = "Settings",
+                enabled = enabled
             )
         }
     }

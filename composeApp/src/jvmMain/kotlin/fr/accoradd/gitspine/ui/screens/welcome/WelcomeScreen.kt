@@ -12,6 +12,7 @@ import fr.accoradd.gitspine.core.config.AppConfig
 fun WelcomeScreen(
     onOpenRepository: () -> Unit,
     onCloneRepository: () -> Unit,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -42,13 +43,15 @@ fun WelcomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Button(
-                    onClick = onOpenRepository
+                    onClick = onOpenRepository,
+                    enabled = enabled
                 ) {
                     Text("Open Repository")
                 }
 
                 OutlinedButton(
-                    onClick = onCloneRepository
+                    onClick = onCloneRepository,
+                    enabled = enabled
                 ) {
                     Text("Clone Repository")
                 }

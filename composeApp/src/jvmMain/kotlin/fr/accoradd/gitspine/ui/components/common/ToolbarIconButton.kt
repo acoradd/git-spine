@@ -22,12 +22,13 @@ fun ToolbarIconButton(
     onClick: () -> Unit,
     icon: ImageVector,
     contentDescription: String,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
 
-    val backgroundColor = if (isHovered) {
+    val backgroundColor = if (isHovered && enabled) {
         MaterialTheme.colorScheme.surfaceContainerHighest
     } else {
         MaterialTheme.colorScheme.surfaceContainer
@@ -39,6 +40,7 @@ fun ToolbarIconButton(
             .background(backgroundColor)
             .hoverable(interactionSource)
             .clickable(
+                enabled = enabled,
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick
@@ -48,7 +50,11 @@ fun ToolbarIconButton(
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = if (enabled) {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            } else {
+                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+            },
             modifier = Modifier.size(20.dp)
         )
     }

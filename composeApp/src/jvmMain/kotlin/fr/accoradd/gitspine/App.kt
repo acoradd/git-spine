@@ -29,6 +29,7 @@ fun App() {
     var showOpenDialog by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showCloneDialog by remember { mutableStateOf(false) }
+    var isDialogBusy by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
 
@@ -41,17 +42,41 @@ fun App() {
                     activeTabId = activeTabId,
                     onTabSelect = { tabsManager.selectTab(it) },
                     onTabClose = { tabsManager.closeTab(it) },
-                    onSettingsClick = { showSettings = true },
-                    onOpenExisting = { showOpenDialog = true },
-                    onCloneRemote = { showCloneDialog = true }
+                    onSettingsClick = {
+                        if (!isDialogBusy) {
+                            showSettings = true
+                        }
+                    },
+                    onOpenExisting = {
+                        if (!isDialogBusy) {
+                            isDialogBusy = true
+                            showOpenDialog = true
+                        }
+                    },
+                    onCloneRemote = {
+                        if (!isDialogBusy) {
+                            showCloneDialog = true
+                        }
+                    },
+                    enabled = !isDialogBusy
                 )
             }
 
             // Content
             if (tabs.isEmpty()) {
                 WelcomeScreen(
-                    onOpenRepository = { showOpenDialog = true },
-                    onCloneRepository = { showCloneDialog = true },
+                    onOpenRepository = {
+                        if (!isDialogBusy) {
+                            isDialogBusy = true
+                            showOpenDialog = true
+                        }
+                    },
+                    onCloneRepository = {
+                        if (!isDialogBusy) {
+                            showCloneDialog = true
+                        }
+                    },
+                    enabled = !isDialogBusy,
                     modifier = Modifier.weight(1f)
                 )
             } else {
@@ -71,6 +96,7 @@ fun App() {
                 tabsManager.openTab(path)
             }
             showOpenDialog = false
+            isDialogBusy = false
         }
     }
 
