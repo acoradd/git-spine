@@ -18,16 +18,20 @@ class JGitRepository : GitRepository {
     private val _isOpen = MutableStateFlow(false)
 
     fun open(repoPath: Path) {
+        println("JGitRepository: Opening repository at $repoPath")
         repo = FileRepositoryBuilder()
             .setGitDir(repoPath.resolve(".git").toFile())
             .build()
         _isOpen.value = true
+        println("JGitRepository: Repository opened successfully")
     }
 
     fun close() {
+        println("JGitRepository: Closing repository")
         repo?.close()
         repo = null
         _isOpen.value = false
+        println("JGitRepository: Repository closed")
     }
 
     override fun getCommits(): Flow<List<Commit>> = flow {

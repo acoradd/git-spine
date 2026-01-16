@@ -28,6 +28,7 @@ fun RepositoryScreen(
     val tabsManager: TabsManager = koinInject()
     val gitRepository: GitRepository = koinInject()
 
+    val activeTabId by tabsManager.activeTabId.collectAsState()
     val activeTab = tabsManager.activeTab
 
     var branches by remember { mutableStateOf<List<Branch>>(emptyList()) }
@@ -36,35 +37,77 @@ fun RepositoryScreen(
     var selectedCommit by remember { mutableStateOf<Commit?>(null) }
 
     // Load repository data when active tab changes
-    LaunchedEffect(activeTab?.path) {
-        activeTab?.let { tab ->
-            // Open repository
-            (gitRepository as? JGitRepository)?.open(tab.path)
+    LaunchedEffect(activeTabId) {
+        println("RepositoryScreen: Active tab ID changed to: $activeTabId")
+        val jgitRepo = gitRepository as? JGitRepository
 
-            // Load branches
-            gitRepository.getBranches().collect { loadedBranches ->
-                branches = loadedBranches
-            }
-        }
-    }
+        // Reset state first
+        branches = emptyList()
+        commits = emptyList()
+        tags = emptyList()
+        selectedCommit = null
 
-    LaunchedEffect(activeTab?.path) {
-        activeTab?.let {
-            // Load commits
-            gitRepository.getCommits().collect { loadedCommits ->
-                commits = loadedCommits
-                if (selectedCommit == null && loadedCommits.isNotEmpty()) {
-                    selectedCommit = loadedCommits.first()
+        if (activeTab == null) {
+            println("RepositoryScreen: No active tab, closing repository")
+            // No active tab, close repository
+            jgitRepo?.close()
+        } else {
+            println("RepositoryScreen: Switching to tab: ${activeTab.path}")
+            // Close previous repository and open new one
+            jgitRepo?.close()
+            jgitRepo?.open(activeTab.path)
+
+            // Load all data in parallel
+            try {
+                // Load branches
+                gitRepository.getBranches().collect { loadedBranches ->
+                    println("RepositoryScreen: Loaded ${loadedBranches.size} branches")
+                    branches = loadedBranches
                 }
+            } catch (e: Exception) {
+                println("Error loading branches: ${e.message}")
+                e.printStackTrace()
             }
         }
     }
 
-    LaunchedEffect(activeTab?.path) {
+    LaunchedEffect(activeTabId) {
         activeTab?.let {
-            // Load tags
-            gitRepository.getTags().collect { loadedTags ->
-                tags = loadedTags
+            println("RepositoryScreen: Loading commits for ${activeTab.path}")
+            try {
+                // Load commits
+                gitRepository.getCommits().collect { loadedCommits ->
+                    println("RepositoryScreen: Loaded ${loadedCommits.size} commits")
+                    commits = loadedCommits
+                    if (selectedCommit == null && loadedCommits.isNotEmpty()) {
+                        selectedCommit = loadedCommits.first()
+                    } else if (loadedCommits.isNotEmpty()) {
+                        // Update selected commit if it still exists in the new list
+                        selectedCommit = loadedCommits.find { it.id == selectedCommit?.id }
+                            ?: loadedCommits.first()
+                    } else {
+                        selectedCommit = null
+                    }
+                }
+            } catch (e: Exception) {
+                println("Error loading commits: ${e.message}")
+                e.printStackTrace()
+            }
+        }
+    }
+
+    LaunchedEffect(activeTabId) {
+        activeTab?.let {
+            println("RepositoryScreen: Loading tags for ${activeTab.path}")
+            try {
+                // Load tags
+                gitRepository.getTags().collect { loadedTags ->
+                    println("RepositoryScreen: Loaded ${loadedTags.size} tags")
+                    tags = loadedTags
+                }
+            } catch (e: Exception) {
+                println("Error loading tags: ${e.message}")
+                e.printStackTrace()
             }
         }
     }
