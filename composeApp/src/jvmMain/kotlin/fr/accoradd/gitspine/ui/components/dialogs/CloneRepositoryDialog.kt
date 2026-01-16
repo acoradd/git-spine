@@ -18,11 +18,10 @@ fun CloneRepositoryDialog(
 ) {
     var url by remember { mutableStateOf("") }
     var destinationPath by remember { mutableStateOf("") }
-    var isCloning by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     AlertDialog(
-        onDismissRequest = { if (!isCloning) onDismiss() },
+        onDismissRequest = onDismiss,
         title = { Text("Cloner un dépôt distant") },
         text = {
             Column(
@@ -38,7 +37,6 @@ fun CloneRepositoryDialog(
                     label = { Text("URL du dépôt") },
                     placeholder = { Text("https://github.com/user/repo.git") },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !isCloning,
                     singleLine = true
                 )
 
@@ -53,7 +51,6 @@ fun CloneRepositoryDialog(
                         label = { Text("Répertoire de destination") },
                         placeholder = { Text("C:/repos/mon-projet") },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !isCloning,
                         singleLine = true
                     )
 
@@ -69,23 +66,10 @@ fun CloneRepositoryDialog(
                                         destinationPath = selected.toString()
                                     }
                                 }
-                            },
-                            enabled = !isCloning
+                            }
                         ) {
                             Text("Parcourir...")
                         }
-                    }
-                }
-
-                if (isCloning) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Clonage en cours...")
                     }
                 }
             }
@@ -94,20 +78,17 @@ fun CloneRepositoryDialog(
             Button(
                 onClick = {
                     if (url.isNotBlank() && destinationPath.isNotBlank()) {
-                        isCloning = true
                         onClone(url, Path.of(destinationPath))
+                        onDismiss()
                     }
                 },
-                enabled = !isCloning && url.isNotBlank() && destinationPath.isNotBlank()
+                enabled = url.isNotBlank() && destinationPath.isNotBlank()
             ) {
                 Text("Cloner")
             }
         },
         dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                enabled = !isCloning
-            ) {
+            TextButton(onClick = onDismiss) {
                 Text("Annuler")
             }
         },

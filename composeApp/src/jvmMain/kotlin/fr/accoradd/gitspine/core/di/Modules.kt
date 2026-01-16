@@ -1,5 +1,6 @@
 package fr.accoradd.gitspine.core.di
 
+import fr.accoradd.gitspine.core.notifications.NotificationManager
 import fr.accoradd.gitspine.core.settings.Settings
 import fr.accoradd.gitspine.core.tabs.TabsManager
 import fr.accoradd.gitspine.domain.repository.GitRepository
@@ -14,6 +15,7 @@ import org.koin.dsl.module
 val appModule = module {
     // Core
     single { TabsManager() }
+    single { NotificationManager() }
 
     // Settings
     single<Settings> { PreferencesSettings() }

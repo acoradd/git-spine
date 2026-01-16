@@ -36,6 +36,7 @@ kotlin {
 
             // JGit
             implementation(libs.jgit)
+            implementation(libs.jgit.ssh.apache)
 
             // JNA (Native OS dialogs)
             implementation(libs.jna)

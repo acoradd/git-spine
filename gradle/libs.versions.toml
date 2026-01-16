@@ -24,6 +24,7 @@ koin-composeVM = { module = "io.insert-koin:koin-compose-viewmodel", version.ref
 
 # JGit
 jgit = { module = "org.eclipse.jgit:org.eclipse.jgit", version.ref = "jgit" }
+jgit-ssh-apache = { module = "org.eclipse.jgit:org.eclipse.jgit.ssh.apache", version.ref = "jgit" }
 
 # JNA (Native OS access)
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }

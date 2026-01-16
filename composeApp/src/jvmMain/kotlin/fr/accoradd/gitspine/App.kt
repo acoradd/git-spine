@@ -1,14 +1,18 @@
 package fr.accoradd.gitspine
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import fr.accoradd.gitspine.core.notifications.NotificationManager
 import fr.accoradd.gitspine.core.settings.Theme
 import fr.accoradd.gitspine.core.tabs.TabsManager
+import fr.accoradd.gitspine.domain.model.Notification
 import fr.accoradd.gitspine.infrastructure.filesystem.FileDialogs
 import fr.accoradd.gitspine.infrastructure.git.GitCloner
 import fr.accoradd.gitspine.ui.components.dialogs.CloneRepositoryDialog
+import fr.accoradd.gitspine.ui.components.notifications.NotificationsContainer
 import fr.accoradd.gitspine.ui.components.tabs.TabBar
 import fr.accoradd.gitspine.ui.screens.repository.RepositoryScreen
 import fr.accoradd.gitspine.ui.screens.welcome.WelcomeScreen
@@ -22,6 +26,7 @@ import java.nio.file.Path
 fun App() {
     val tabsManager: TabsManager = koinInject()
     val graphViewModel: GraphViewModel = koinInject()
+    val notificationManager: NotificationManager = koinInject()
 
     val tabs by tabsManager.tabs.collectAsState()
     val activeTabId by tabsManager.activeTabId.collectAsState()
@@ -34,7 +39,8 @@ fun App() {
     val scope = rememberCoroutineScope()
 
     GitSpineTheme(appTheme = Theme.SYSTEM) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize()) {
             // Tab bar (only show if there are tabs)
             if (tabs.isNotEmpty()) {
                 TabBar(
@@ -85,6 +91,10 @@ fun App() {
                     modifier = Modifier.weight(1f)
                 )
             }
+            }
+
+            // Notifications container
+            NotificationsContainer(notificationManager = notificationManager)
         }
     }
 
@@ -112,14 +122,42 @@ fun App() {
             onDismiss = { showCloneDialog = false },
             onClone = { url, destinationPath ->
                 scope.launch {
-                    val result = GitCloner.clone(url, destinationPath.toString())
+                    // Créer une notification de clonage
+                    val notificationId = notificationManager.createNotification(
+                        title = "Clonage du dépôt",
+                        message = "Démarrage...",
+                        progress = Notification.Progress.Indeterminate
+                    )
+
+                    val result = GitCloner.clone(
+                        url = url,
+                        destinationPath = destinationPath.toString(),
+                        onProgress = { progress ->
+                            val notifProgress = if (progress.total > 0) {
+                                Notification.Progress.Determinate(progress.completed, progress.total)
+                            } else {
+                                Notification.Progress.Indeterminate
+                            }
+                            notificationManager.updateProgress(
+                                id = notificationId,
+                                message = progress.message,
+                                progress = notifProgress
+                            )
+                        }
+                    )
+
                     if (result.isSuccess) {
+                        notificationManager.completeNotification(
+                            id = notificationId,
+                            message = "Dépôt cloné avec succès"
+                        )
                         tabsManager.openTab(destinationPath)
-                        showCloneDialog = false
                     } else {
-                        // TODO: Afficher une erreur
-                        println("Erreur de clonage: ${result.exceptionOrNull()?.message}")
-                        showCloneDialog = false
+                        val errorMsg = result.exceptionOrNull()?.message ?: "Erreur inconnue"
+                        notificationManager.failNotification(
+                            id = notificationId,
+                            errorMessage = errorMsg
+                        )
                     }
                 }
             },
