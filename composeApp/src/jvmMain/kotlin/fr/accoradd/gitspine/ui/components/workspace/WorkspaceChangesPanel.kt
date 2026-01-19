@@ -4,8 +4,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -27,6 +27,9 @@ fun WorkspaceChangesPanel(
     onStageAll: () -> Unit,
     onUnstageAll: () -> Unit,
     onDiscardChanges: (String, Boolean) -> Unit,
+    onStageFiles: (List<String>) -> Unit,
+    onUnstageFiles: (List<String>) -> Unit,
+    onDiscardFilesChanges: (List<String>, Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var stagedExpanded by remember { mutableStateOf(true) }
@@ -36,6 +39,7 @@ fun WorkspaceChangesPanel(
         modifier = modifier
             .fillMaxWidth()
             .padding(8.dp)
+            .verticalScroll(rememberScrollState())
     ) {
         if (status.isLoading) {
             Box(
@@ -47,16 +51,27 @@ fun WorkspaceChangesPanel(
         } else if (!status.hasChanges) {
             EmptyState()
         } else {
+            // Build trees for staged and unstaged files
+            val stagedTree = remember(status.staged) { buildFileTreeSimple(status.staged) }
+            val unstagedTree = remember(status.unstaged) { buildFileTreeSimple(status.unstaged) }
+
             // Staged files section
-            FileSection(
+            FileTreeSection(
                 title = "Fichiers indexés (${status.stagedCount})",
-                files = status.staged,
+                tree = stagedTree,
                 expanded = stagedExpanded,
                 onExpandToggle = { stagedExpanded = !stagedExpanded },
-                onFileAction = { file, action ->
+                onFileAction = { path, action ->
                     when (action) {
-                        FileAction.Unstage -> onUnstageFile(file.path)
-                        FileAction.Discard -> onDiscardChanges(file.path, true)
+                        FileTreeAction.Unstage -> onUnstageFile(path)
+                        FileTreeAction.Discard -> onDiscardChanges(path, true)
+                        else -> {}
+                    }
+                },
+                onFolderAction = { paths, action ->
+                    when (action) {
+                        FileTreeAction.Unstage -> onUnstageFiles(paths)
+                        FileTreeAction.Discard -> onDiscardFilesChanges(paths, true)
                         else -> {}
                     }
                 },
@@ -80,15 +95,22 @@ fun WorkspaceChangesPanel(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Unstaged files section
-            FileSection(
+            FileTreeSection(
                 title = "Modifications non indexées (${status.unstagedCount})",
-                files = status.unstaged,
+                tree = unstagedTree,
                 expanded = unstagedExpanded,
                 onExpandToggle = { unstagedExpanded = !unstagedExpanded },
-                onFileAction = { file, action ->
+                onFileAction = { path, action ->
                     when (action) {
-                        FileAction.Stage -> onStageFile(file.path)
-                        FileAction.Discard -> onDiscardChanges(file.path, false)
+                        FileTreeAction.Stage -> onStageFile(path)
+                        FileTreeAction.Discard -> onDiscardChanges(path, false)
+                        else -> {}
+                    }
+                },
+                onFolderAction = { paths, action ->
+                    when (action) {
+                        FileTreeAction.Stage -> onStageFiles(paths)
+                        FileTreeAction.Discard -> onDiscardFilesChanges(paths, false)
                         else -> {}
                     }
                 },
@@ -101,12 +123,13 @@ fun WorkspaceChangesPanel(
 }
 
 @Composable
-private fun FileSection(
+private fun FileTreeSection(
     title: String,
-    files: List<FileStatus>,
+    tree: List<FileTreeNode>,
     expanded: Boolean,
     onExpandToggle: () -> Unit,
-    onFileAction: (FileStatus, FileAction) -> Unit,
+    onFileAction: (String, FileTreeAction) -> Unit,
+    onFolderAction: (List<String>, FileTreeAction) -> Unit,
     headerActions: (@Composable () -> Unit)?,
     footerActions: (@Composable () -> Unit)?,
     isStaged: Boolean
@@ -143,10 +166,10 @@ private fun FileSection(
             headerActions?.invoke()
         }
 
-        // File list
+        // File tree
         AnimatedVisibility(visible = expanded) {
             Column {
-                if (files.isEmpty()) {
+                if (tree.isEmpty()) {
                     Text(
                         text = "Aucun fichier",
                         modifier = Modifier.padding(12.dp),
@@ -154,13 +177,12 @@ private fun FileSection(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
-                    files.forEach { file ->
-                        FileStatusItem(
-                            file = file,
-                            isStaged = isStaged,
-                            onAction = { action -> onFileAction(file, action) }
-                        )
-                    }
+                    FileTreeView(
+                        nodes = tree,
+                        isStaged = isStaged,
+                        onFileAction = onFileAction,
+                        onFolderAction = onFolderAction
+                    )
                 }
 
                 // Footer actions
@@ -174,76 +196,6 @@ private fun FileSection(
                         it()
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun FileStatusItem(
-    file: FileStatus,
-    isStaged: Boolean,
-    onAction: (FileAction) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(
-            modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = file.statusType.icon(),
-                contentDescription = file.statusType.name,
-                tint = file.statusType.color(),
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = file.path,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (isStaged) {
-                IconButton(
-                    onClick = { onAction(FileAction.Unstage) },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Clear,
-                        contentDescription = "Désindexer",
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            } else {
-                IconButton(
-                    onClick = { onAction(FileAction.Stage) },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Indexer",
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-            IconButton(
-                onClick = { onAction(FileAction.Discard) },
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Annuler",
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.error
-                )
             }
         }
     }
@@ -274,28 +226,4 @@ private fun EmptyState() {
             )
         }
     }
-}
-
-private enum class FileAction {
-    Stage,
-    Unstage,
-    Discard
-}
-
-private fun FileStatusType.icon() = when (this) {
-    FileStatusType.ADDED -> Icons.Default.Add
-    FileStatusType.MODIFIED -> Icons.Default.Edit
-    FileStatusType.DELETED -> Icons.Default.Delete
-    FileStatusType.UNTRACKED -> Icons.Default.Star
-    FileStatusType.CONFLICTING -> Icons.Default.Warning
-    FileStatusType.RENAMED -> Icons.Default.Info
-}
-
-private fun FileStatusType.color() = when (this) {
-    FileStatusType.ADDED -> Color(0xFF4CAF50)      // Green
-    FileStatusType.MODIFIED -> Color(0xFF2196F3)   // Blue
-    FileStatusType.DELETED -> Color(0xFFF44336)    // Red
-    FileStatusType.UNTRACKED -> Color(0xFF9E9E9E)  // Gray
-    FileStatusType.CONFLICTING -> Color(0xFFFF9800) // Orange
-    FileStatusType.RENAMED -> Color(0xFF9C27B0)    // Purple
 }

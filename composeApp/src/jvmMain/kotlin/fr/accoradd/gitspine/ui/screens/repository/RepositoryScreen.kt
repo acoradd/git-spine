@@ -211,7 +211,10 @@ fun RepositoryScreen(
                 onUnstageFile = { path -> workspaceViewModel.unstageFile(path) },
                 onStageAll = { workspaceViewModel.stageAll() },
                 onUnstageAll = { workspaceViewModel.unstageAll() },
-                onDiscardChanges = { path, staged -> workspaceViewModel.discardChanges(path, staged) }
+                onDiscardChanges = { path, staged -> workspaceViewModel.discardChanges(path, staged) },
+                onStageFiles = { paths -> workspaceViewModel.stageFiles(paths) },
+                onUnstageFiles = { paths -> workspaceViewModel.unstageFiles(paths) },
+                onDiscardFilesChanges = { paths, staged -> workspaceViewModel.discardFilesChanges(paths, staged) }
             )
         }
     )
@@ -313,7 +316,10 @@ private fun RightPanel(
     onUnstageFile: (String) -> Unit,
     onStageAll: () -> Unit,
     onUnstageAll: () -> Unit,
-    onDiscardChanges: (String, Boolean) -> Unit
+    onDiscardChanges: (String, Boolean) -> Unit,
+    onStageFiles: (List<String>) -> Unit,
+    onUnstageFiles: (List<String>) -> Unit,
+    onDiscardFilesChanges: (List<String>, Boolean) -> Unit
 ) {
     when (selectedItem) {
         is CommitOrWip.Wip -> {
@@ -325,6 +331,9 @@ private fun RightPanel(
                 onStageAll = onStageAll,
                 onUnstageAll = onUnstageAll,
                 onDiscardChanges = onDiscardChanges,
+                onStageFiles = onStageFiles,
+                onUnstageFiles = onUnstageFiles,
+                onDiscardFilesChanges = onDiscardFilesChanges,
                 modifier = Modifier.fillMaxSize()
             )
         }

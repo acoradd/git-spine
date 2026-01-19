@@ -60,6 +60,19 @@ class WorkspaceViewModel(
     fun discardChanges(path: String, staged: Boolean) =
         executeOperation { discardChangesUseCase(path, staged) }
 
+    // Operations on multiple files (for folders)
+    fun stageFiles(paths: List<String>) = executeOperation {
+        paths.forEach { stageFileUseCase(it) }
+    }
+
+    fun unstageFiles(paths: List<String>) = executeOperation {
+        paths.forEach { unstageFileUseCase(it) }
+    }
+
+    fun discardFilesChanges(paths: List<String>, staged: Boolean) = executeOperation {
+        paths.forEach { discardChangesUseCase(it, staged) }
+    }
+
     private fun executeOperation(operation: suspend () -> Unit) {
         viewModelScope.launch {
             try {
