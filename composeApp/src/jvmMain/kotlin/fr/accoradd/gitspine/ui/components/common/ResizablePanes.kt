@@ -59,7 +59,6 @@ fun ThreeColumnResizablePanes(
                             1f - rightWidth - minPaneWidth
                         )
                         leftWidth = newLeftWidth
-                        println("Left width: $newLeftWidth, $deltaX, $ratio")
                     }
                 )
 

@@ -8,8 +8,15 @@ import kotlinx.coroutines.flow.Flow
 
 interface GitRepository {
     fun getCommits(skip: Int = 0, limit: Int = 1000): Flow<List<Commit>>
-    fun getBranches(): Flow<List<Branch>>
-    fun getTags(): Flow<List<String>>
+
+    // Load all local branches, with optional search
+    fun getLocalBranches(search: String? = null): Flow<List<Branch>>
+
+    // Load remote branches with pagination and search
+    fun getRemoteBranches(skip: Int = 0, limit: Int = 100, search: String? = null): Flow<List<Branch>>
+
+    fun getTags(skip: Int = 0, limit: Int = 100, search: String? = null): Flow<List<String>>
+
     fun getGraph(): Flow<List<GraphNode>>
 
     // Workspace status

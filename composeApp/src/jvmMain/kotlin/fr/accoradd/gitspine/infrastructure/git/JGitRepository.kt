@@ -93,58 +93,107 @@ class JGitRepository : GitRepository {
         emit(commits)
     }
 
-    override fun getBranches(): Flow<List<Branch>> = flow {
+    override fun getLocalBranches(search: String?): Flow<List<Branch>> = flow {
         val repository = repo ?: run {
             emit(emptyList())
             return@flow
         }
 
-        val branches = mutableListOf<Branch>()
         val headRef = repository.exactRef("HEAD")
         val currentBranchName = repository.branch
+        val filter = search?.lowercase()
 
-        // Local branches
-        repository.refDatabase.getRefsByPrefix("refs/heads/").forEach { ref ->
-            branches.add(
+        val localBranches = repository.refDatabase.getRefsByPrefix("refs/heads/").asSequence()
+            .map { ref ->
                 Branch(
                     name = ref.name.removePrefix("refs/heads/"),
                     isRemote = false,
                     isHead = ref.name.removePrefix("refs/heads/") == currentBranchName,
                     commitId = ref.objectId.name
                 )
-            )
+            }
+            .filter { filter == null || it.name.lowercase().contains(filter) }
+            .sortedBy { it.name }
+            .toList()
+
+        emit(localBranches)
+    }
+
+    override fun getRemoteBranches(skip: Int, limit: Int, search: String?): Flow<List<Branch>> = flow {
+        val repository = repo ?: run {
+            emit(emptyList())
+            return@flow
         }
 
-        // Remote branches
-        repository.refDatabase.getRefsByPrefix("refs/remotes/").forEach { ref ->
-            branches.add(
+        val filter = search?.lowercase()
+
+        val remoteBranches = repository.refDatabase.getRefsByPrefix("refs/remotes/").asSequence()
+            .map { ref ->
                 Branch(
                     name = ref.name.removePrefix("refs/remotes/"),
                     isRemote = true,
                     isHead = false,
                     commitId = ref.objectId.name
                 )
-            )
-        }
+            }
+            .filter { filter == null || it.name.lowercase().contains(filter) }
+            .sortedBy { it.name }
+            .drop(skip)
+            .take(limit)
+            .toList()
 
-        emit(branches)
+        emit(remoteBranches)
     }
 
-    override fun getTags(): Flow<List<String>> = flow {
+    override fun getTags(skip: Int, limit: Int, search: String?): Flow<List<String>> = flow {
         val repository = repo ?: run {
             emit(emptyList())
             return@flow
         }
 
-        val tags = mutableListOf<String>()
+        val filter = search?.lowercase()
+        val walk = RevWalk(repository)
 
-        // Get all tags
-        repository.refDatabase.getRefsByPrefix("refs/tags/").forEach { ref ->
-            tags.add(ref.name.removePrefix("refs/tags/"))
+        try {
+            val tags = repository.refDatabase.getRefsByPrefix("refs/tags/").asSequence()
+                .map { ref ->
+                    val tagName = ref.name.removePrefix("refs/tags/")
+                    // Resolve the tag to get the commit time
+                    val objectId = ref.objectId
+                    val commitTime = try {
+                        val revObject = walk.parseAny(objectId)
+                        when (revObject) {
+                            is org.eclipse.jgit.revwalk.RevTag -> {
+                                // If it's an annotated tag, get the tagged object (usually a commit)
+                                val target = walk.parseAny(revObject.`object`)
+                                if (target is org.eclipse.jgit.revwalk.RevCommit) {
+                                    target.commitTime
+                                } else {
+                                    0 // Should not happen for standard tags
+                                }
+                            }
+                            is org.eclipse.jgit.revwalk.RevCommit -> revObject.commitTime
+                            else -> 0
+                        }
+                    } catch (e: Exception) {
+                        0
+                    }
+                    
+                    Triple(tagName, commitTime, ref)
+                }
+                .filter { (name, _, _) -> filter == null || name.lowercase().contains(filter) }
+                .sortedByDescending { (_, time, _) -> time } // Sort by time descending (newest first)
+                .map { (name, _, _) -> name }
+                .drop(skip)
+                .take(limit)
+                .toList()
+
+            emit(tags)
+        } finally {
+            walk.close()
         }
-
-        emit(tags.sorted())
     }
+
 
     override fun getGraph(): Flow<List<GraphNode>> = flow {
         // TODO: Implémenter l'algo de construction du graph

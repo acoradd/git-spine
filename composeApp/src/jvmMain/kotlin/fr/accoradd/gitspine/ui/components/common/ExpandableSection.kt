@@ -10,23 +10,55 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.dp
 
 @Composable
 fun ExpandableSection(
     title: String,
     initialExpanded: Boolean = true,
+    onExpandedChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
     var expanded by remember { mutableStateOf(initialExpanded) }
 
+    LaunchedEffect(expanded) {
+        onExpandedChange(expanded)
+    }
+
     Column(modifier = modifier) {
-        // Header
+        SectionHeader(
+            title = title,
+            expanded = expanded,
+            onToggle = { expanded = !expanded }
+        )
+
+        // Content
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            content()
+        }
+    }
+}
+
+@Composable
+fun SectionHeader(
+    title: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { expanded = !expanded }
+                .pointerHoverIcon(PointerIcon.Hand)
+                .clickable { onToggle() }
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
@@ -45,19 +77,9 @@ fun ExpandableSection(
             )
         }
 
-        // Divider
         HorizontalDivider(
             color = MaterialTheme.colorScheme.outlineVariant,
             thickness = 1.dp
         )
-
-        // Content
-        AnimatedVisibility(
-            visible = expanded,
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut()
-        ) {
-            content()
-        }
     }
 }

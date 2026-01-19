@@ -18,6 +18,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
@@ -104,6 +106,7 @@ private fun FolderItem(
                     if (isHovered) MaterialTheme.colorScheme.surfaceContainerHighest
                     else MaterialTheme.colorScheme.surface
                 )
+                .pointerHoverIcon(PointerIcon.Hand)
                 .clickable { expanded = !expanded }
                 .hoverable(interactionSource)
                 .horizontalScroll(rememberScrollState())
@@ -176,6 +179,7 @@ private fun LeafItem(
                     else -> MaterialTheme.colorScheme.surface
                 }
             )
+            .pointerHoverIcon(PointerIcon.Hand)
             .clickable(onClick = onClick)
             .hoverable(interactionSource)
             .horizontalScroll(rememberScrollState())

@@ -39,22 +39,107 @@ fun RepositoryScreen(
     val tabsManager: TabsManager = koinInject()
     val gitRepository: GitRepository = koinInject()
     val workspaceViewModel: WorkspaceViewModel = koinInject()
+    val scope = rememberCoroutineScope()
 
     val activeTabId by tabsManager.activeTabId.collectAsState()
     val activeTab = tabsManager.activeTab
     val workspaceState by workspaceViewModel.state.collectAsState()
 
-    var branches by remember { mutableStateOf<List<Branch>>(emptyList()) }
+    // Data states
+    var localBranches by remember { mutableStateOf<List<Branch>>(emptyList()) }
+    var remoteBranches by remember { mutableStateOf<List<Branch>>(emptyList()) }
     var commits by remember { mutableStateOf<List<Commit>>(emptyList()) }
     var tags by remember { mutableStateOf<List<String>>(emptyList()) }
     var selectedItem by remember { mutableStateOf<CommitOrWip?>(null) }
-    var isLoadingMore by remember { mutableStateOf(false) }
+    
+    // Pagination & Search states
+    var isLoadingMoreCommits by remember { mutableStateOf(false) }
     var hasMoreCommits by remember { mutableStateOf(true) }
+    
+    var localBranchSearchQuery by remember { mutableStateOf("") }
+    var remoteBranchSearchQuery by remember { mutableStateOf("") }
+    var tagSearchQuery by remember { mutableStateOf("") }
+    
+    var hasMoreRemoteBranches by remember { mutableStateOf(true) }
+    var hasMoreTags by remember { mutableStateOf(true) }
+    
+    var isLoadingLocalBranches by remember { mutableStateOf(false) }
+    var isLoadingRemoteBranches by remember { mutableStateOf(false) }
+    var isLoadingTags by remember { mutableStateOf(false) }
+    
+    var isRepoReady by remember { mutableStateOf(false) }
 
-    // Load workspace status when active tab changes
-    LaunchedEffect(activeTabId) {
-        if (activeTab != null) {
-            workspaceViewModel.loadStatus()
+    // Helper functions for loading data
+    fun loadLocalBranches() {
+        if (isLoadingLocalBranches) return
+        isLoadingLocalBranches = true
+        
+        scope.launch {
+            try {
+                gitRepository.getLocalBranches(search = localBranchSearchQuery).collect { loadedBranches ->
+                    println("RepositoryScreen: Loaded ${loadedBranches.size} local branches (search='$localBranchSearchQuery')")
+                    localBranches = loadedBranches
+                    isLoadingLocalBranches = false
+                }
+            } catch (e: Exception) {
+                println("Error loading local branches: ${e.message}")
+                e.printStackTrace()
+                isLoadingLocalBranches = false
+            }
+        }
+    }
+
+    fun loadRemoteBranches(reset: Boolean = false) {
+        if (isLoadingRemoteBranches || (!reset && !hasMoreRemoteBranches)) return
+        
+        isLoadingRemoteBranches = true
+        val skip = if (reset) 0 else remoteBranches.size
+        val limit = 100
+        
+        scope.launch {
+            try {
+                gitRepository.getRemoteBranches(skip = skip, limit = limit, search = remoteBranchSearchQuery).collect { loadedBranches ->
+                    println("RepositoryScreen: Loaded ${loadedBranches.size} remote branches (skip=$skip, search='$remoteBranchSearchQuery')")
+                    if (reset) {
+                        remoteBranches = loadedBranches
+                    } else {
+                        remoteBranches = remoteBranches + loadedBranches
+                    }
+                    hasMoreRemoteBranches = loadedBranches.size == limit
+                    isLoadingRemoteBranches = false
+                }
+            } catch (e: Exception) {
+                println("Error loading remote branches: ${e.message}")
+                e.printStackTrace()
+                isLoadingRemoteBranches = false
+            }
+        }
+    }
+
+    fun loadTags(reset: Boolean = false) {
+        if (isLoadingTags || (!reset && !hasMoreTags)) return
+        
+        isLoadingTags = true
+        val skip = if (reset) 0 else tags.size
+        val limit = 100
+        
+        scope.launch {
+            try {
+                gitRepository.getTags(skip = skip, limit = limit, search = tagSearchQuery).collect { loadedTags ->
+                    println("RepositoryScreen: Loaded ${loadedTags.size} tags (skip=$skip, search='$tagSearchQuery')")
+                    if (reset) {
+                        tags = loadedTags
+                    } else {
+                        tags = tags + loadedTags
+                    }
+                    hasMoreTags = loadedTags.size == limit
+                    isLoadingTags = false
+                }
+            } catch (e: Exception) {
+                println("Error loading tags: ${e.message}")
+                e.printStackTrace()
+                isLoadingTags = false
+            }
         }
     }
 
@@ -79,12 +164,26 @@ fun RepositoryScreen(
         val jgitRepo = gitRepository as? JGitRepository
 
         // Reset state first
-        branches = emptyList()
+        localBranches = emptyList()
+        remoteBranches = emptyList()
         commits = emptyList()
         tags = emptyList()
         selectedItem = null
         hasMoreCommits = true
-        isLoadingMore = false
+        isLoadingMoreCommits = false
+        
+        localBranchSearchQuery = ""
+        remoteBranchSearchQuery = ""
+        tagSearchQuery = ""
+        
+        hasMoreRemoteBranches = true
+        hasMoreTags = true
+        
+        isLoadingLocalBranches = false
+        isLoadingRemoteBranches = false
+        isLoadingTags = false
+        
+        isRepoReady = false
 
         if (activeTab == null) {
             println("RepositoryScreen: No active tab, closing repository")
@@ -95,24 +194,12 @@ fun RepositoryScreen(
             // Close previous repository and open new one
             jgitRepo?.close()
             jgitRepo?.open(activeTab.path)
+            isRepoReady = true
 
-            // Load all data in parallel
-            try {
-                // Load branches
-                gitRepository.getBranches().collect { loadedBranches ->
-                    println("RepositoryScreen: Loaded ${loadedBranches.size} branches")
-                    branches = loadedBranches
-                }
-            } catch (e: Exception) {
-                println("Error loading branches: ${e.message}")
-                e.printStackTrace()
-            }
-        }
-    }
+            // Load status
+            workspaceViewModel.loadStatus()
 
-    LaunchedEffect(activeTabId) {
-        activeTab?.let {
-            println("RepositoryScreen: Loading initial commits for ${activeTab.path}")
+            // Load initial commits
             try {
                 // Load initial commits (first 100)
                 gitRepository.getCommits(skip = 0, limit = 100).collect { loadedCommits ->
@@ -121,7 +208,8 @@ fun RepositoryScreen(
                     hasMoreCommits = loadedCommits.size == 100
 
                     // Select WIP if there are changes, otherwise first commit
-                    selectedItem = if (workspaceState.status.hasChanges) {
+                    val currentStatus = workspaceViewModel.state.value.status
+                    selectedItem = if (currentStatus.hasChanges) {
                         CommitOrWip.Wip
                     } else if (loadedCommits.isNotEmpty()) {
                         CommitOrWip.CommitItem(loadedCommits.first())
@@ -133,14 +221,19 @@ fun RepositoryScreen(
                 println("Error loading commits: ${e.message}")
                 e.printStackTrace()
             }
+            
+            // Initial load for all sections to show counts
+            loadLocalBranches()
+            loadRemoteBranches(reset = true)
+            loadTags(reset = true)
         }
     }
 
     // Function to load more commits
     fun loadMoreCommits() {
-        if (isLoadingMore || !hasMoreCommits || activeTab == null) return
+        if (isLoadingMoreCommits || !hasMoreCommits || activeTab == null) return
 
-        isLoadingMore = true
+        isLoadingMoreCommits = true
         println("RepositoryScreen: Loading more commits, current count: ${commits.size}")
 
         CoroutineScope(Dispatchers.Main).launch {
@@ -149,28 +242,12 @@ fun RepositoryScreen(
                     println("RepositoryScreen: Loaded ${loadedCommits.size} more commits")
                     commits = commits + loadedCommits
                     hasMoreCommits = loadedCommits.size == 100
-                    isLoadingMore = false
+                    isLoadingMoreCommits = false
                 }
             } catch (e: Exception) {
                 println("Error loading more commits: ${e.message}")
                 e.printStackTrace()
-                isLoadingMore = false
-            }
-        }
-    }
-
-    LaunchedEffect(activeTabId) {
-        activeTab?.let {
-            println("RepositoryScreen: Loading tags for ${activeTab.path}")
-            try {
-                // Load tags
-                gitRepository.getTags().collect { loadedTags ->
-                    println("RepositoryScreen: Loaded ${loadedTags.size} tags")
-                    tags = loadedTags
-                }
-            } catch (e: Exception) {
-                println("Error loading tags: ${e.message}")
-                e.printStackTrace()
+                isLoadingMoreCommits = false
             }
         }
     }
@@ -180,16 +257,51 @@ fun RepositoryScreen(
         initialLeftWidth = 0.2f,
         initialRightWidth = 0.25f,
         leftContent = {
-            LeftPanel(
-                branches = branches,
-                tags = tags,
-                onBranchClick = { branchName ->
-                    println("Branch clicked: $branchName")
-                },
-                onTagClick = { tagName ->
-                    println("Tag clicked: $tagName")
+            if (isRepoReady) {
+                key(activeTabId) {
+                    LeftPanel(
+                        localBranches = localBranches,
+                        remoteBranches = remoteBranches,
+                        tags = tags,
+                        
+                        localBranchSearchQuery = localBranchSearchQuery,
+                        remoteBranchSearchQuery = remoteBranchSearchQuery,
+                        tagSearchQuery = tagSearchQuery,
+                        
+                        hasMoreRemoteBranches = hasMoreRemoteBranches,
+                        hasMoreTags = hasMoreTags,
+                        
+                        onBranchClick = { branchName ->
+                            println("Branch clicked: $branchName")
+                        },
+                        onTagClick = { tagName ->
+                            println("Tag clicked: $tagName")
+                        },
+                        
+                        onLoadLocalBranches = { loadLocalBranches() },
+                        onLocalBranchSearch = { query ->
+                            localBranchSearchQuery = query
+                            loadLocalBranches()
+                        },
+                        
+                        onLoadRemoteBranches = { loadRemoteBranches(reset = true) },
+                        onLoadMoreRemoteBranches = { loadRemoteBranches(reset = false) },
+                        onRemoteBranchSearch = { query ->
+                            remoteBranchSearchQuery = query
+                            loadRemoteBranches(reset = true)
+                        },
+                        
+                        onLoadTags = { loadTags(reset = true) },
+                        onLoadMoreTags = { loadTags(reset = false) },
+                        onTagSearch = { query ->
+                            tagSearchQuery = query
+                            loadTags(reset = true)
+                        }
+                    )
                 }
-            )
+            } else {
+                Box(modifier = Modifier.fillMaxSize())
+            }
         },
         centerContent = {
             CenterPanel(
@@ -200,7 +312,7 @@ fun RepositoryScreen(
                     selectedItem = item
                 },
                 onLoadMore = { loadMoreCommits() },
-                hasMore = hasMoreCommits && !isLoadingMore
+                hasMore = hasMoreCommits && !isLoadingMoreCommits
             )
         },
         rightContent = {
@@ -222,27 +334,69 @@ fun RepositoryScreen(
 
 @Composable
 private fun LeftPanel(
-    branches: List<Branch>,
+    localBranches: List<Branch>,
+    remoteBranches: List<Branch>,
     tags: List<String>,
+    
+    localBranchSearchQuery: String,
+    remoteBranchSearchQuery: String,
+    tagSearchQuery: String,
+    
+    hasMoreRemoteBranches: Boolean,
+    hasMoreTags: Boolean,
+    
     onBranchClick: (String) -> Unit,
-    onTagClick: (String) -> Unit
+    onTagClick: (String) -> Unit,
+    
+    onLoadLocalBranches: () -> Unit,
+    onLocalBranchSearch: (String) -> Unit,
+    
+    onLoadRemoteBranches: () -> Unit,
+    onLoadMoreRemoteBranches: () -> Unit,
+    onRemoteBranchSearch: (String) -> Unit,
+    
+    onLoadTags: () -> Unit,
+    onLoadMoreTags: () -> Unit,
+    onTagSearch: (String) -> Unit
 ) {
-    // Separate local and remote branches
-    val localBranches = branches.filter { !it.isRemote }.map { it.name }
-    val remoteBranches = branches.filter { it.isRemote }
+    // Format local branches
+    val localBranchesNames = localBranches.map { it.name }
+    
+    // Format remote branches
+    val remoteBranchesMap = remoteBranches
         .groupBy { it.name.substringBefore("/") }
         .mapValues { (_, branchesList) ->
             branchesList.map { it.name.substringAfter("/") }
         }
-    val selectedBranch = branches.find { it.isHead }?.name
+        
+    val selectedBranch = localBranches.find { it.isHead }?.name ?: remoteBranches.find { it.isHead }?.name
 
     RepositoryLeftPanel(
-        localBranches = localBranches,
-        remoteBranches = remoteBranches,
+        localBranches = localBranchesNames,
+        remoteBranches = remoteBranchesMap,
         tags = tags,
         selectedBranch = selectedBranch,
+        
+        localBranchSearchQuery = localBranchSearchQuery,
+        remoteBranchSearchQuery = remoteBranchSearchQuery,
+        tagSearchQuery = tagSearchQuery,
+        
+        hasMoreRemoteBranches = hasMoreRemoteBranches,
+        hasMoreTags = hasMoreTags,
+        
         onBranchClick = onBranchClick,
-        onTagClick = onTagClick
+        onTagClick = onTagClick,
+        
+        onLoadLocalBranches = onLoadLocalBranches,
+        onLocalBranchSearch = onLocalBranchSearch,
+        
+        onLoadRemoteBranches = onLoadRemoteBranches,
+        onLoadMoreRemoteBranches = onLoadMoreRemoteBranches,
+        onRemoteBranchSearch = onRemoteBranchSearch,
+
+        onLoadTags = onLoadTags,
+        onLoadMoreTags = onLoadMoreTags,
+        onTagSearch = onTagSearch
     )
 }
 
