@@ -2,12 +2,9 @@ package fr.accoradd.gitspine
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import fr.accoradd.gitspine.core.notifications.NotificationManager
@@ -17,6 +14,7 @@ import fr.accoradd.gitspine.domain.model.Notification
 import fr.accoradd.gitspine.infrastructure.filesystem.FileDialogs
 import fr.accoradd.gitspine.infrastructure.git.GitCloner
 import fr.accoradd.gitspine.ui.components.dialogs.CloneRepositoryDialog
+import fr.accoradd.gitspine.ui.components.dialogs.SettingsDialog
 import fr.accoradd.gitspine.ui.components.notifications.NotificationsContainer
 import fr.accoradd.gitspine.ui.components.tabs.TabBar
 import fr.accoradd.gitspine.ui.screens.repository.RepositoryScreen
@@ -53,37 +51,29 @@ fun App() {
                 Column(modifier = Modifier.fillMaxSize()) {
                     // Tab bar (only show if there are tabs)
                     if (tabs.isNotEmpty()) {
-                        Column {
-                            TabBar(
-                                tabs = tabs,
-                                activeTabId = activeTabId,
-                                onTabSelect = { tabsManager.selectTab(it) },
-                                onTabClose = { tabsManager.closeTab(it) },
-                                onSettingsClick = {
-                                    if (!isDialogBusy) {
-                                        showSettings = true
-                                    }
-                                },
-                                onOpenExisting = {
-                                    if (!isDialogBusy) {
-                                        isDialogBusy = true
-                                        showOpenDialog = true
-                                    }
-                                },
-                                onCloneRemote = {
-                                    if (!isDialogBusy) {
-                                        showCloneDialog = true
-                                    }
-                                },
-                                enabled = !isDialogBusy
-                            )
-                            // Theme switcher for debug
-                            Row {
-                                Button(onClick = { currentTheme = Theme.SYSTEM }) { Text("System") }
-                                Button(onClick = { currentTheme = Theme.LIGHT }) { Text("Light") }
-                                Button(onClick = { currentTheme = Theme.DARK }) { Text("Dark") }
-                            }
-                        }
+                        TabBar(
+                            tabs = tabs,
+                            activeTabId = activeTabId,
+                            onTabSelect = { tabsManager.selectTab(it) },
+                            onTabClose = { tabsManager.closeTab(it) },
+                            onSettingsClick = {
+                                if (!isDialogBusy) {
+                                    showSettings = true
+                                }
+                            },
+                            onOpenExisting = {
+                                if (!isDialogBusy) {
+                                    isDialogBusy = true
+                                    showOpenDialog = true
+                                }
+                            },
+                            onCloneRemote = {
+                                if (!isDialogBusy) {
+                                    showCloneDialog = true
+                                }
+                            },
+                            enabled = !isDialogBusy
+                        )
                     }
 
                     // Content
@@ -129,10 +119,13 @@ fun App() {
         }
     }
 
-    // TODO: Settings dialog
+    // Settings dialog
     if (showSettings) {
-        // Will be implemented later
-        showSettings = false
+        SettingsDialog(
+            currentTheme = currentTheme,
+            onThemeChange = { currentTheme = it },
+            onDismiss = { showSettings = false }
+        )
     }
 
     // Clone repository dialog

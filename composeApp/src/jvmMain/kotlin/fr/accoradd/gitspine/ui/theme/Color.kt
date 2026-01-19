@@ -11,9 +11,9 @@ val IjLightTextSecondary = Color(0xFF767A7C)
 val IjLightHover = Color(0xFFEAF2FF)
 
 // --- IntelliJ New UI: Dark Theme ---
-val IjDarkBg = Color(0xFF2B2D30)
-val IjDarkSurface = Color(0xFF313335)
-val IjDarkBorder = Color(0xFF4D5052)
+val IjDarkBg = Color(0xFF26282B)
+val IjDarkSurface = Color(0xFF191A1C)
+val IjDarkBorder = Color(0xFF26282B)
 val IjDarkText = Color(0xFFDFE1E5)
 val IjDarkTextSecondary = Color(0xFF8C9196)
 val IjDarkHover = Color(0xFF323B4F)
