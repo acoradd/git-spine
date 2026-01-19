@@ -2,7 +2,12 @@ package fr.accoradd.gitspine
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import fr.accoradd.gitspine.core.notifications.NotificationManager
@@ -20,7 +25,6 @@ import fr.accoradd.gitspine.ui.theme.GitSpineTheme
 import fr.accoradd.gitspine.ui.viewmodel.GraphViewModel
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
-import java.nio.file.Path
 
 @Composable
 fun App() {
@@ -35,66 +39,81 @@ fun App() {
     var showSettings by remember { mutableStateOf(false) }
     var showCloneDialog by remember { mutableStateOf(false) }
     var isDialogBusy by remember { mutableStateOf(false) }
+    
+    var currentTheme by remember { mutableStateOf(Theme.SYSTEM) }
 
     val scope = rememberCoroutineScope()
 
-    GitSpineTheme(appTheme = Theme.SYSTEM) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize()) {
-            // Tab bar (only show if there are tabs)
-            if (tabs.isNotEmpty()) {
-                TabBar(
-                    tabs = tabs,
-                    activeTabId = activeTabId,
-                    onTabSelect = { tabsManager.selectTab(it) },
-                    onTabClose = { tabsManager.closeTab(it) },
-                    onSettingsClick = {
-                        if (!isDialogBusy) {
-                            showSettings = true
+    GitSpineTheme(appTheme = currentTheme) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Tab bar (only show if there are tabs)
+                    if (tabs.isNotEmpty()) {
+                        Column {
+                            TabBar(
+                                tabs = tabs,
+                                activeTabId = activeTabId,
+                                onTabSelect = { tabsManager.selectTab(it) },
+                                onTabClose = { tabsManager.closeTab(it) },
+                                onSettingsClick = {
+                                    if (!isDialogBusy) {
+                                        showSettings = true
+                                    }
+                                },
+                                onOpenExisting = {
+                                    if (!isDialogBusy) {
+                                        isDialogBusy = true
+                                        showOpenDialog = true
+                                    }
+                                },
+                                onCloneRemote = {
+                                    if (!isDialogBusy) {
+                                        showCloneDialog = true
+                                    }
+                                },
+                                enabled = !isDialogBusy
+                            )
+                            // Theme switcher for debug
+                            Row {
+                                Button(onClick = { currentTheme = Theme.SYSTEM }) { Text("System") }
+                                Button(onClick = { currentTheme = Theme.LIGHT }) { Text("Light") }
+                                Button(onClick = { currentTheme = Theme.DARK }) { Text("Dark") }
+                            }
                         }
-                    },
-                    onOpenExisting = {
-                        if (!isDialogBusy) {
-                            isDialogBusy = true
-                            showOpenDialog = true
-                        }
-                    },
-                    onCloneRemote = {
-                        if (!isDialogBusy) {
-                            showCloneDialog = true
-                        }
-                    },
-                    enabled = !isDialogBusy
-                )
-            }
+                    }
 
-            // Content
-            if (tabs.isEmpty()) {
-                WelcomeScreen(
-                    onOpenRepository = {
-                        if (!isDialogBusy) {
-                            isDialogBusy = true
-                            showOpenDialog = true
-                        }
-                    },
-                    onCloneRepository = {
-                        if (!isDialogBusy) {
-                            showCloneDialog = true
-                        }
-                    },
-                    enabled = !isDialogBusy,
-                    modifier = Modifier.weight(1f)
-                )
-            } else {
-                RepositoryScreen(
-                    viewModel = graphViewModel,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            }
+                    // Content
+                    if (tabs.isEmpty()) {
+                        WelcomeScreen(
+                            onOpenRepository = {
+                                if (!isDialogBusy) {
+                                    isDialogBusy = true
+                                    showOpenDialog = true
+                                }
+                            },
+                            onCloneRepository = {
+                                if (!isDialogBusy) {
+                                    showCloneDialog = true
+                                }
+                            },
+                            enabled = !isDialogBusy,
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else {
+                        RepositoryScreen(
+                            viewModel = graphViewModel,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
 
-            // Notifications container
-            NotificationsContainer(notificationManager = notificationManager)
+                // Notifications container
+                NotificationsContainer(notificationManager = notificationManager)
+            }
         }
     }
 

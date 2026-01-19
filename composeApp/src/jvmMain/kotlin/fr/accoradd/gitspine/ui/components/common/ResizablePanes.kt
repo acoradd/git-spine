@@ -1,18 +1,22 @@
 package fr.accoradd.gitspine.ui.components.common
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
@@ -34,23 +38,22 @@ fun ThreeColumnResizablePanes(
     var rightWidthAtStartOfDrag by remember { mutableStateOf(initialRightWidth) }
 
     val density = LocalDensity.current
+    val cornerRadius = 8.dp
+    val spacerWidth = 4.dp
 
     BoxWithConstraints(modifier = modifier) {
         val totalWidth = constraints.maxWidth.toFloat()
-        val dividerWidthDp = 4.dp
-        val dividerWidthPx = with(density) { dividerWidthDp.toPx() }
-        // Calculate available width for panes (excluding dividers)
+        val dividerWidthPx = with(density) { spacerWidth.toPx() }
         val availableWidth = totalWidth - (dividerWidthPx * 2)
 
         Layout(
             content = {
                 // Left pane
-                Box(modifier = Modifier) {
-                    leftContent()
-                }
+                Pane(cornerRadius = cornerRadius) { leftContent() }
 
                 // Left divider
-                VerticalDivider(
+                HorizontalSpacer(
+                    width = spacerWidth,
                     onDragStart = { leftWidthAtStartOfDrag = leftWidth },
                     onPositionChange = { deltaX ->
                         val ratio = leftWidthAtStartOfDrag + (deltaX / availableWidth)
@@ -63,12 +66,11 @@ fun ThreeColumnResizablePanes(
                 )
 
                 // Center pane
-                Box(modifier = Modifier) {
-                    centerContent()
-                }
+                Pane(cornerRadius = cornerRadius) { centerContent() }
 
                 // Right divider
-                VerticalDivider(
+                HorizontalSpacer(
+                    width = spacerWidth,
                     onDragStart = { rightWidthAtStartOfDrag = rightWidth },
                     onPositionChange = { deltaX ->
                         val ratio = rightWidthAtStartOfDrag - (deltaX / availableWidth)
@@ -81,68 +83,80 @@ fun ThreeColumnResizablePanes(
                 )
 
                 // Right pane
-                Box(modifier = Modifier) {
-                    rightContent()
-                }
+                Pane(cornerRadius = cornerRadius) { rightContent() }
             }
         ) { measurables, constraints ->
-        val width = constraints.maxWidth
-        val height = constraints.maxHeight
+            val width = constraints.maxWidth
+            val height = constraints.maxHeight
 
-        val dividerWidth = 4.dp.roundToPx()
+            val dividerWidth = spacerWidth.roundToPx()
 
-        val leftPaneWidth = (width * leftWidth).toInt()
-        val rightPaneWidth = (width * rightWidth).toInt()
-        val centerPaneWidth = width - leftPaneWidth - rightPaneWidth - (dividerWidth * 2)
+            val leftPaneWidth = (availableWidth * leftWidth).toInt()
+            val rightPaneWidth = (availableWidth * rightWidth).toInt()
+            val centerPaneWidth = width - leftPaneWidth - rightPaneWidth - (dividerWidth * 2)
 
-        // Measure children
-        val leftPlaceable = measurables[0].measure(
-            Constraints.fixed(leftPaneWidth, height)
-        )
-        val leftDividerPlaceable = measurables[1].measure(
-            Constraints.fixed(dividerWidth, height)
-        )
-        val centerPlaceable = measurables[2].measure(
-            Constraints.fixed(centerPaneWidth, height)
-        )
-        val rightDividerPlaceable = measurables[3].measure(
-            Constraints.fixed(dividerWidth, height)
-        )
-        val rightPlaceable = measurables[4].measure(
-            Constraints.fixed(rightPaneWidth, height)
-        )
+            // Measure children
+            val leftPlaceable = measurables[0].measure(
+                Constraints.fixed(leftPaneWidth, height)
+            )
+            val leftDividerPlaceable = measurables[1].measure(
+                Constraints.fixed(dividerWidth, height)
+            )
+            val centerPlaceable = measurables[2].measure(
+                Constraints.fixed(centerPaneWidth, height)
+            )
+            val rightDividerPlaceable = measurables[3].measure(
+                Constraints.fixed(dividerWidth, height)
+            )
+            val rightPlaceable = measurables[4].measure(
+                Constraints.fixed(rightPaneWidth, height)
+            )
 
-        layout(width, height) {
-            var x = 0
+            layout(width, height) {
+                var x = 0
 
-            leftPlaceable.placeRelative(x, 0)
-            x += leftPaneWidth
+                leftPlaceable.placeRelative(x, 0)
+                x += leftPaneWidth
 
-            leftDividerPlaceable.placeRelative(x, 0)
-            x += dividerWidth
+                leftDividerPlaceable.placeRelative(x, 0)
+                x += dividerWidth
 
-            centerPlaceable.placeRelative(x, 0)
-            x += centerPaneWidth
+                centerPlaceable.placeRelative(x, 0)
+                x += centerPaneWidth
 
-            rightDividerPlaceable.placeRelative(x, 0)
-            x += dividerWidth
+                rightDividerPlaceable.placeRelative(x, 0)
+                x += dividerWidth
 
-            rightPlaceable.placeRelative(x, 0)
+                rightPlaceable.placeRelative(x, 0)
+            }
         }
-    }
     }
 }
 
 @Composable
-private fun VerticalDivider(
+private fun Pane(
+    cornerRadius: androidx.compose.ui.unit.Dp,
+    content: @Composable () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(cornerRadius)),
+        color = MaterialTheme.colorScheme.surface,
+        content = content
+    )
+}
+
+@Composable
+private fun HorizontalSpacer(
+    width: androidx.compose.ui.unit.Dp,
     onDragStart: () -> Unit,
     onPositionChange: (absoluteX: Float) -> Unit
 ) {
     Box(
         modifier = Modifier
             .fillMaxHeight()
-            .width(4.dp)
-            .background(MaterialTheme.colorScheme.outlineVariant)
+            .width(width)
             .pointerHoverIcon(PointerIcon(Cursor(Cursor.E_RESIZE_CURSOR)))
             .pointerInput(Unit) {
                 awaitEachGesture {

@@ -7,9 +7,69 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import fr.accoradd.gitspine.core.settings.Theme as AppTheme
 
-private val DarkColorScheme = darkColorScheme()
+private val LightColorScheme = lightColorScheme(
+    primary = IjBlue,
+    onPrimary = White,
+    primaryContainer = IjLightHover, // Utiliser la couleur de survol pour la sélection
+    onPrimaryContainer = IjLightText,
+    
+    secondary = IjBlue,
+    onSecondary = White,
+    
+    tertiary = IjYellow,
+    onTertiary = IjLightText,
+    
+    background = IjLightBg,
+    onBackground = IjLightText,
+    
+    surface = IjLightSurface,
+    onSurface = IjLightText,
+    
+    surfaceVariant = IjLightBg,
+    onSurfaceVariant = IjLightTextSecondary,
+    
+    surfaceContainerLow = IjLightSurface,
+    surfaceContainer = IjLightSurface,
+    surfaceContainerHigh = IjLightHover,
+    surfaceContainerHighest = IjLightHover,
+    
+    error = IjRed,
+    onError = White,
+    
+    outline = IjLightBorder
+)
 
-private val LightColorScheme = lightColorScheme()
+private val DarkColorScheme = darkColorScheme(
+    primary = IjBlue,
+    onPrimary = White,
+    primaryContainer = IjDarkHover, // Utiliser la couleur de survol pour la sélection
+    onPrimaryContainer = IjDarkText,
+
+    secondary = IjBlue,
+    onSecondary = White,
+
+    tertiary = IjYellow,
+    onTertiary = IjDarkText,
+
+    background = IjDarkBg,
+    onBackground = IjDarkText,
+
+    surface = IjDarkSurface,
+    onSurface = IjDarkText,
+
+    surfaceVariant = IjDarkBg,
+    onSurfaceVariant = IjDarkTextSecondary,
+    
+    surfaceContainerLow = IjDarkSurface,
+    surfaceContainer = IjDarkSurface,
+    surfaceContainerHigh = IjDarkHover,
+    surfaceContainerHighest = IjDarkHover,
+
+    error = IjRed,
+    onError = White,
+
+    outline = IjDarkBorder
+)
 
 @Composable
 fun GitSpineTheme(

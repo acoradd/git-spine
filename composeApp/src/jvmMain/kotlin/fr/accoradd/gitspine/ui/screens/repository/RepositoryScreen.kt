@@ -253,7 +253,7 @@ fun RepositoryScreen(
     }
 
     ThreeColumnResizablePanes(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().padding(4.dp),
         initialLeftWidth = 0.2f,
         initialRightWidth = 0.25f,
         leftContent = {
@@ -497,22 +497,15 @@ private fun RightPanel(
         }
         null -> {
             // No selection
-            Card(
-                modifier = Modifier.fillMaxSize().padding(8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        "Sélectionnez un commit",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(
+                    "Sélectionnez un commit",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -520,81 +513,74 @@ private fun RightPanel(
 
 @Composable
 private fun CommitDetailsPanel(commit: Commit) {
-    Card(
-        modifier = Modifier.fillMaxSize().padding(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+    val dateFormatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        val dateFormatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss") }
+        // Commit hash
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                "Commit",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                commit.shortId,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.tertiary
+            )
+        }
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Commit hash
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    "Commit",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    commit.shortId,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.tertiary
-                )
-            }
+        HorizontalDivider()
 
-            HorizontalDivider()
+        // Author
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                "Auteur",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                "${commit.author.name} <${commit.author.email}>",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
 
-            // Author
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    "Auteur",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    "${commit.author.name} <${commit.author.email}>",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
+        // Date
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                "Date",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                dateFormatter.format(
+                    java.time.LocalDateTime.ofInstant(
+                        commit.timestamp,
+                        java.time.ZoneId.systemDefault()
+                    )
+                ),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
 
-            // Date
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    "Date",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    dateFormatter.format(
-                        java.time.LocalDateTime.ofInstant(
-                            commit.timestamp,
-                            java.time.ZoneId.systemDefault()
-                        )
-                    ),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
+        HorizontalDivider()
 
-            HorizontalDivider()
-
-            // Message
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    "Message",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    commit.message,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
+        // Message
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                "Message",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                commit.message,
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
 }
