@@ -1,12 +1,15 @@
 package fr.accoradd.gitspine.ui.screens.repository
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import fr.accoradd.gitspine.core.tabs.TabsManager
 import fr.accoradd.gitspine.domain.model.Branch
 import fr.accoradd.gitspine.domain.model.Commit
 import fr.accoradd.gitspine.domain.repository.GitRepository
@@ -16,6 +19,8 @@ import fr.accoradd.gitspine.ui.components.repository.CommitData
 import fr.accoradd.gitspine.ui.components.repository.CommitList
 import fr.accoradd.gitspine.ui.components.repository.RepositoryLeftPanel
 import fr.accoradd.gitspine.ui.components.workspace.WorkspaceChangesPanel
+import fr.accoradd.gitspine.ui.navigation.NavController
+import fr.accoradd.gitspine.ui.navigation.Screen
 import fr.accoradd.gitspine.ui.viewmodel.GraphViewModel
 import fr.accoradd.gitspine.ui.viewmodel.WorkspaceViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -30,19 +35,17 @@ sealed class CommitOrWip {
     data class CommitItem(val commit: Commit) : CommitOrWip()
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RepositoryScreen(
     viewModel: GraphViewModel,
-    modifier: Modifier = Modifier
+    navController: NavController
 ) {
-    val state by viewModel.state.collectAsState()
-    val tabsManager: TabsManager = koinInject()
     val gitRepository: GitRepository = koinInject()
     val workspaceViewModel: WorkspaceViewModel = koinInject()
     val scope = rememberCoroutineScope()
 
-    val activeTabId by tabsManager.activeTabId.collectAsState()
-    val activeTab = tabsManager.activeTab
+    val screenState = navController.currentScreen as Screen.Repository
     val workspaceState by workspaceViewModel.state.collectAsState()
 
     // Data states
@@ -77,13 +80,11 @@ fun RepositoryScreen(
         scope.launch {
             try {
                 gitRepository.getLocalBranches(search = localBranchSearchQuery).collect { loadedBranches ->
-                    println("RepositoryScreen: Loaded ${loadedBranches.size} local branches (search='$localBranchSearchQuery')")
                     localBranches = loadedBranches
                     isLoadingLocalBranches = false
                 }
             } catch (e: Exception) {
                 println("Error loading local branches: ${e.message}")
-                e.printStackTrace()
                 isLoadingLocalBranches = false
             }
         }
@@ -99,7 +100,6 @@ fun RepositoryScreen(
         scope.launch {
             try {
                 gitRepository.getRemoteBranches(skip = skip, limit = limit, search = remoteBranchSearchQuery).collect { loadedBranches ->
-                    println("RepositoryScreen: Loaded ${loadedBranches.size} remote branches (skip=$skip, search='$remoteBranchSearchQuery')")
                     if (reset) {
                         remoteBranches = loadedBranches
                     } else {
@@ -110,7 +110,6 @@ fun RepositoryScreen(
                 }
             } catch (e: Exception) {
                 println("Error loading remote branches: ${e.message}")
-                e.printStackTrace()
                 isLoadingRemoteBranches = false
             }
         }
@@ -126,7 +125,6 @@ fun RepositoryScreen(
         scope.launch {
             try {
                 gitRepository.getTags(skip = skip, limit = limit, search = tagSearchQuery).collect { loadedTags ->
-                    println("RepositoryScreen: Loaded ${loadedTags.size} tags (skip=$skip, search='$tagSearchQuery')")
                     if (reset) {
                         tags = loadedTags
                     } else {
@@ -137,7 +135,6 @@ fun RepositoryScreen(
                 }
             } catch (e: Exception) {
                 println("Error loading tags: ${e.message}")
-                e.printStackTrace()
                 isLoadingTags = false
             }
         }
@@ -146,10 +143,8 @@ fun RepositoryScreen(
     // Auto-select WIP when changes appear
     LaunchedEffect(workspaceState.status.hasChanges) {
         if (workspaceState.status.hasChanges && selectedItem == null) {
-            // Changes appeared and nothing is selected -> select WIP
             selectedItem = CommitOrWip.Wip
         } else if (!workspaceState.status.hasChanges && selectedItem is CommitOrWip.Wip) {
-            // Changes disappeared and WIP was selected -> select first commit or null
             selectedItem = if (commits.isNotEmpty()) {
                 CommitOrWip.CommitItem(commits.first())
             } else {
@@ -158,139 +153,122 @@ fun RepositoryScreen(
         }
     }
 
-    // Load repository data when active tab changes
-    LaunchedEffect(activeTabId) {
-        println("RepositoryScreen: Active tab ID changed to: $activeTabId")
+    // Load repository data when path changes
+    LaunchedEffect(screenState.path) {
         val jgitRepo = gitRepository as? JGitRepository
+        jgitRepo?.close()
+        jgitRepo?.open(screenState.path)
+        isRepoReady = true
 
-        // Reset state first
-        localBranches = emptyList()
-        remoteBranches = emptyList()
-        commits = emptyList()
-        tags = emptyList()
-        selectedItem = null
-        hasMoreCommits = true
-        isLoadingMoreCommits = false
-        
-        localBranchSearchQuery = ""
-        remoteBranchSearchQuery = ""
-        tagSearchQuery = ""
-        
-        hasMoreRemoteBranches = true
-        hasMoreTags = true
-        
-        isLoadingLocalBranches = false
-        isLoadingRemoteBranches = false
-        isLoadingTags = false
-        
-        isRepoReady = false
+        workspaceViewModel.loadStatus()
 
-        if (activeTab == null) {
-            println("RepositoryScreen: No active tab, closing repository")
-            // No active tab, close repository
-            jgitRepo?.close()
-        } else {
-            println("RepositoryScreen: Switching to tab: ${activeTab.path}")
-            // Close previous repository and open new one
-            jgitRepo?.close()
-            jgitRepo?.open(activeTab.path)
-            isRepoReady = true
-
-            // Load status
-            workspaceViewModel.loadStatus()
-
-            // Load initial commits
-            try {
-                // Load initial commits (first 100)
-                gitRepository.getCommits(skip = 0, limit = 100).collect { loadedCommits ->
-                    println("RepositoryScreen: Loaded ${loadedCommits.size} initial commits")
-                    commits = loadedCommits
-                    hasMoreCommits = loadedCommits.size == 100
-
-                    // Select WIP if there are changes, otherwise first commit
-                    val currentStatus = workspaceViewModel.state.value.status
-                    selectedItem = if (currentStatus.hasChanges) {
-                        CommitOrWip.Wip
-                    } else if (loadedCommits.isNotEmpty()) {
-                        CommitOrWip.CommitItem(loadedCommits.first())
-                    } else {
-                        null
-                    }
+        try {
+            gitRepository.getCommits(skip = 0, limit = 100).collect { loadedCommits ->
+                commits = loadedCommits
+                hasMoreCommits = loadedCommits.size == 100
+                selectedItem = if (workspaceViewModel.state.value.status.hasChanges) {
+                    CommitOrWip.Wip
+                } else if (loadedCommits.isNotEmpty()) {
+                    CommitOrWip.CommitItem(loadedCommits.first())
+                } else {
+                    null
                 }
-            } catch (e: Exception) {
-                println("Error loading commits: ${e.message}")
-                e.printStackTrace()
             }
-            
-            // Initial load for all sections to show counts
-            loadLocalBranches()
-            loadRemoteBranches(reset = true)
-            loadTags(reset = true)
+        } catch (e: Exception) {
+            println("Error loading commits: ${e.message}")
         }
+        
+        loadLocalBranches()
+        loadRemoteBranches(reset = true)
+        loadTags(reset = true)
     }
 
     // Function to load more commits
     fun loadMoreCommits() {
-        if (isLoadingMoreCommits || !hasMoreCommits || activeTab == null) return
+        if (isLoadingMoreCommits || !hasMoreCommits) return
 
         isLoadingMoreCommits = true
-        println("RepositoryScreen: Loading more commits, current count: ${commits.size}")
-
         CoroutineScope(Dispatchers.Main).launch {
             try {
                 gitRepository.getCommits(skip = commits.size, limit = 100).collect { loadedCommits ->
-                    println("RepositoryScreen: Loaded ${loadedCommits.size} more commits")
                     commits = commits + loadedCommits
                     hasMoreCommits = loadedCommits.size == 100
                     isLoadingMoreCommits = false
                 }
             } catch (e: Exception) {
                 println("Error loading more commits: ${e.message}")
-                e.printStackTrace()
                 isLoadingMoreCommits = false
             }
         }
     }
 
-    ThreeColumnResizablePanes(
-        modifier = modifier.fillMaxSize().padding(4.dp),
-        initialLeftWidth = 0.2f,
-        initialRightWidth = 0.25f,
-        leftContent = {
-            if (isRepoReady) {
-                key(activeTabId) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // TODO: Replace with actual logo
+                        Box(modifier = Modifier.size(32.dp).padding(4.dp), contentAlignment = Alignment.Center) {
+                            Text("GS")
+                        }
+                        
+                        // Repository Selector
+                        TextButton(onClick = { /* TODO: Show repo list */ }) {
+                            Text(screenState.path.fileName.toString(), style = MaterialTheme.typography.titleMedium)
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                        }
+                    }
+                },
+                actions = {
+                    // Git Actions
+                    TextButton(onClick = { /* TODO */ }) { Text("Fetch") }
+                    TextButton(onClick = { /* TODO */ }) { Text("Pull") }
+                    TextButton(onClick = { /* TODO */ }) { Text("Push") }
+                    TextButton(onClick = { /* TODO */ }) { Text("Stash") }
+                    TextButton(onClick = { /* TODO */ }) { Text("Unstash") }
+                    TextButton(onClick = { /* TODO */ }) { Text("New Branch") }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    // Add Repo & Settings
+                    IconButton(onClick = { navController.navigateTo(Screen.AddRepository) }) {
+                        Icon(Icons.Default.Add, contentDescription = "Ajouter un dépôt")
+                    }
+                    IconButton(onClick = { navController.navigateTo(Screen.Settings) }) {
+                        Icon(Icons.Default.Settings, contentDescription = "Paramètres")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        ThreeColumnResizablePanes(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(4.dp),
+            initialLeftWidth = 0.2f,
+            initialRightWidth = 0.25f,
+            leftContent = {
+                if (isRepoReady) {
                     LeftPanel(
                         localBranches = localBranches,
                         remoteBranches = remoteBranches,
                         tags = tags,
-                        
                         localBranchSearchQuery = localBranchSearchQuery,
                         remoteBranchSearchQuery = remoteBranchSearchQuery,
                         tagSearchQuery = tagSearchQuery,
-                        
                         hasMoreRemoteBranches = hasMoreRemoteBranches,
                         hasMoreTags = hasMoreTags,
-                        
-                        onBranchClick = { branchName ->
-                            println("Branch clicked: $branchName")
-                        },
-                        onTagClick = { tagName ->
-                            println("Tag clicked: $tagName")
-                        },
-                        
-                        onLoadLocalBranches = { loadLocalBranches() },
+                        onBranchClick = { /* ... */ },
+                        onTagClick = { /* ... */ },
+                        onLoadLocalBranches = ::loadLocalBranches,
                         onLocalBranchSearch = { query ->
                             localBranchSearchQuery = query
                             loadLocalBranches()
                         },
-                        
                         onLoadRemoteBranches = { loadRemoteBranches(reset = true) },
                         onLoadMoreRemoteBranches = { loadRemoteBranches(reset = false) },
                         onRemoteBranchSearch = { query ->
                             remoteBranchSearchQuery = query
                             loadRemoteBranches(reset = true)
                         },
-                        
                         onLoadTags = { loadTags(reset = true) },
                         onLoadMoreTags = { loadTags(reset = false) },
                         onTagSearch = { query ->
@@ -298,38 +276,36 @@ fun RepositoryScreen(
                             loadTags(reset = true)
                         }
                     )
+                } else {
+                    Box(modifier = Modifier.fillMaxSize())
                 }
-            } else {
-                Box(modifier = Modifier.fillMaxSize())
+            },
+            centerContent = {
+                CenterPanel(
+                    commits = commits,
+                    workspaceStatus = workspaceState.status,
+                    selectedItem = selectedItem,
+                    onItemClick = { item -> selectedItem = item },
+                    onLoadMore = ::loadMoreCommits,
+                    hasMore = hasMoreCommits && !isLoadingMoreCommits
+                )
+            },
+            rightContent = {
+                RightPanel(
+                    selectedItem = selectedItem,
+                    workspaceStatus = workspaceState.status,
+                    onStageFile = { path -> workspaceViewModel.stageFile(path) },
+                    onUnstageFile = { path -> workspaceViewModel.unstageFile(path) },
+                    onStageAll = { workspaceViewModel.stageAll() },
+                    onUnstageAll = { workspaceViewModel.unstageAll() },
+                    onDiscardChanges = { path, staged -> workspaceViewModel.discardChanges(path, staged) },
+                    onStageFiles = { paths -> workspaceViewModel.stageFiles(paths) },
+                    onUnstageFiles = { paths -> workspaceViewModel.unstageFiles(paths) },
+                    onDiscardFilesChanges = { paths, staged -> workspaceViewModel.discardFilesChanges(paths, staged) }
+                )
             }
-        },
-        centerContent = {
-            CenterPanel(
-                commits = commits,
-                workspaceStatus = workspaceState.status,
-                selectedItem = selectedItem,
-                onItemClick = { item ->
-                    selectedItem = item
-                },
-                onLoadMore = { loadMoreCommits() },
-                hasMore = hasMoreCommits && !isLoadingMoreCommits
-            )
-        },
-        rightContent = {
-            RightPanel(
-                selectedItem = selectedItem,
-                workspaceStatus = workspaceState.status,
-                onStageFile = { path -> workspaceViewModel.stageFile(path) },
-                onUnstageFile = { path -> workspaceViewModel.unstageFile(path) },
-                onStageAll = { workspaceViewModel.stageAll() },
-                onUnstageAll = { workspaceViewModel.unstageAll() },
-                onDiscardChanges = { path, staged -> workspaceViewModel.discardChanges(path, staged) },
-                onStageFiles = { paths -> workspaceViewModel.stageFiles(paths) },
-                onUnstageFiles = { paths -> workspaceViewModel.unstageFiles(paths) },
-                onDiscardFilesChanges = { paths, staged -> workspaceViewModel.discardFilesChanges(paths, staged) }
-            )
-        }
-    )
+        )
+    }
 }
 
 @Composable
@@ -337,38 +313,28 @@ private fun LeftPanel(
     localBranches: List<Branch>,
     remoteBranches: List<Branch>,
     tags: List<String>,
-    
     localBranchSearchQuery: String,
     remoteBranchSearchQuery: String,
     tagSearchQuery: String,
-    
     hasMoreRemoteBranches: Boolean,
     hasMoreTags: Boolean,
-    
     onBranchClick: (String) -> Unit,
     onTagClick: (String) -> Unit,
-    
     onLoadLocalBranches: () -> Unit,
     onLocalBranchSearch: (String) -> Unit,
-    
     onLoadRemoteBranches: () -> Unit,
     onLoadMoreRemoteBranches: () -> Unit,
     onRemoteBranchSearch: (String) -> Unit,
-    
     onLoadTags: () -> Unit,
     onLoadMoreTags: () -> Unit,
     onTagSearch: (String) -> Unit
 ) {
-    // Format local branches
     val localBranchesNames = localBranches.map { it.name }
-    
-    // Format remote branches
     val remoteBranchesMap = remoteBranches
         .groupBy { it.name.substringBefore("/") }
         .mapValues { (_, branchesList) ->
             branchesList.map { it.name.substringAfter("/") }
         }
-        
     val selectedBranch = localBranches.find { it.isHead }?.name ?: remoteBranches.find { it.isHead }?.name
 
     RepositoryLeftPanel(
@@ -376,24 +342,18 @@ private fun LeftPanel(
         remoteBranches = remoteBranchesMap,
         tags = tags,
         selectedBranch = selectedBranch,
-        
         localBranchSearchQuery = localBranchSearchQuery,
         remoteBranchSearchQuery = remoteBranchSearchQuery,
         tagSearchQuery = tagSearchQuery,
-        
         hasMoreRemoteBranches = hasMoreRemoteBranches,
         hasMoreTags = hasMoreTags,
-        
         onBranchClick = onBranchClick,
         onTagClick = onTagClick,
-        
         onLoadLocalBranches = onLoadLocalBranches,
         onLocalBranchSearch = onLocalBranchSearch,
-        
         onLoadRemoteBranches = onLoadRemoteBranches,
         onLoadMoreRemoteBranches = onLoadMoreRemoteBranches,
         onRemoteBranchSearch = onRemoteBranchSearch,
-
         onLoadTags = onLoadTags,
         onLoadMoreTags = onLoadMoreTags,
         onTagSearch = onTagSearch
@@ -412,7 +372,6 @@ private fun CenterPanel(
     val dateFormatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm") }
 
     val commitDataList = buildList {
-        // Add WIP row if there are changes
         if (workspaceStatus.hasChanges) {
             add(
                 CommitData(
@@ -425,8 +384,6 @@ private fun CenterPanel(
                 )
             )
         }
-
-        // Add regular commits
         commits.forEach { commit ->
             add(
                 CommitData(
@@ -477,7 +434,6 @@ private fun RightPanel(
 ) {
     when (selectedItem) {
         is CommitOrWip.Wip -> {
-            // Show workspace changes panel
             WorkspaceChangesPanel(
                 status = workspaceStatus,
                 onStageFile = onStageFile,
@@ -492,11 +448,9 @@ private fun RightPanel(
             )
         }
         is CommitOrWip.CommitItem -> {
-            // Show commit details
             CommitDetailsPanel(commit = selectedItem.commit)
         }
         null -> {
-            // No selection
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -521,7 +475,6 @@ private fun CommitDetailsPanel(commit: Commit) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Commit hash
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 "Commit",
@@ -534,10 +487,7 @@ private fun CommitDetailsPanel(commit: Commit) {
                 color = MaterialTheme.colorScheme.tertiary
             )
         }
-
         HorizontalDivider()
-
-        // Author
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 "Auteur",
@@ -549,8 +499,6 @@ private fun CommitDetailsPanel(commit: Commit) {
                 style = MaterialTheme.typography.bodyMedium
             )
         }
-
-        // Date
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 "Date",
@@ -567,10 +515,7 @@ private fun CommitDetailsPanel(commit: Commit) {
                 style = MaterialTheme.typography.bodyMedium
             )
         }
-
         HorizontalDivider()
-
-        // Message
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 "Message",
