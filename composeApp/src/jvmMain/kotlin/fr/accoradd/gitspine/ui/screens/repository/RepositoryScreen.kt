@@ -15,12 +15,20 @@ import fr.accoradd.gitspine.ui.components.common.ThreeColumnResizablePanes
 import fr.accoradd.gitspine.ui.components.repository.CommitData
 import fr.accoradd.gitspine.ui.components.repository.CommitList
 import fr.accoradd.gitspine.ui.components.repository.RepositoryLeftPanel
+import fr.accoradd.gitspine.ui.components.workspace.WorkspaceChangesPanel
 import fr.accoradd.gitspine.ui.viewmodel.GraphViewModel
+import fr.accoradd.gitspine.ui.viewmodel.WorkspaceViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import java.time.format.DateTimeFormatter
+
+// Sealed class to represent either a commit or WIP
+sealed class CommitOrWip {
+    data object Wip : CommitOrWip()
+    data class CommitItem(val commit: Commit) : CommitOrWip()
+}
 
 @Composable
 fun RepositoryScreen(
@@ -30,16 +38,40 @@ fun RepositoryScreen(
     val state by viewModel.state.collectAsState()
     val tabsManager: TabsManager = koinInject()
     val gitRepository: GitRepository = koinInject()
+    val workspaceViewModel: WorkspaceViewModel = koinInject()
 
     val activeTabId by tabsManager.activeTabId.collectAsState()
     val activeTab = tabsManager.activeTab
+    val workspaceState by workspaceViewModel.state.collectAsState()
 
     var branches by remember { mutableStateOf<List<Branch>>(emptyList()) }
     var commits by remember { mutableStateOf<List<Commit>>(emptyList()) }
     var tags by remember { mutableStateOf<List<String>>(emptyList()) }
-    var selectedCommit by remember { mutableStateOf<Commit?>(null) }
+    var selectedItem by remember { mutableStateOf<CommitOrWip?>(null) }
     var isLoadingMore by remember { mutableStateOf(false) }
     var hasMoreCommits by remember { mutableStateOf(true) }
+
+    // Load workspace status when active tab changes
+    LaunchedEffect(activeTabId) {
+        if (activeTab != null) {
+            workspaceViewModel.loadStatus()
+        }
+    }
+
+    // Auto-select WIP when changes appear
+    LaunchedEffect(workspaceState.status.hasChanges) {
+        if (workspaceState.status.hasChanges && selectedItem == null) {
+            // Changes appeared and nothing is selected -> select WIP
+            selectedItem = CommitOrWip.Wip
+        } else if (!workspaceState.status.hasChanges && selectedItem is CommitOrWip.Wip) {
+            // Changes disappeared and WIP was selected -> select first commit or null
+            selectedItem = if (commits.isNotEmpty()) {
+                CommitOrWip.CommitItem(commits.first())
+            } else {
+                null
+            }
+        }
+    }
 
     // Load repository data when active tab changes
     LaunchedEffect(activeTabId) {
@@ -50,7 +82,7 @@ fun RepositoryScreen(
         branches = emptyList()
         commits = emptyList()
         tags = emptyList()
-        selectedCommit = null
+        selectedItem = null
         hasMoreCommits = true
         isLoadingMore = false
 
@@ -88,10 +120,13 @@ fun RepositoryScreen(
                     commits = loadedCommits
                     hasMoreCommits = loadedCommits.size == 100
 
-                    if (loadedCommits.isNotEmpty()) {
-                        selectedCommit = loadedCommits.first()
+                    // Select WIP if there are changes, otherwise first commit
+                    selectedItem = if (workspaceState.status.hasChanges) {
+                        CommitOrWip.Wip
+                    } else if (loadedCommits.isNotEmpty()) {
+                        CommitOrWip.CommitItem(loadedCommits.first())
                     } else {
-                        selectedCommit = null
+                        null
                     }
                 }
             } catch (e: Exception) {
@@ -159,16 +194,25 @@ fun RepositoryScreen(
         centerContent = {
             CenterPanel(
                 commits = commits,
-                selectedCommit = selectedCommit,
-                onCommitClick = { commit ->
-                    selectedCommit = commit
+                workspaceStatus = workspaceState.status,
+                selectedItem = selectedItem,
+                onItemClick = { item ->
+                    selectedItem = item
                 },
                 onLoadMore = { loadMoreCommits() },
                 hasMore = hasMoreCommits && !isLoadingMore
             )
         },
         rightContent = {
-            RightPanel(commit = selectedCommit)
+            RightPanel(
+                selectedItem = selectedItem,
+                workspaceStatus = workspaceState.status,
+                onStageFile = { path -> workspaceViewModel.stageFile(path) },
+                onUnstageFile = { path -> workspaceViewModel.unstageFile(path) },
+                onStageAll = { workspaceViewModel.stageAll() },
+                onUnstageAll = { workspaceViewModel.unstageAll() },
+                onDiscardChanges = { path, staged -> workspaceViewModel.discardChanges(path, staged) }
+            )
         }
     )
 }
@@ -202,34 +246,58 @@ private fun LeftPanel(
 @Composable
 private fun CenterPanel(
     commits: List<Commit>,
-    selectedCommit: Commit?,
-    onCommitClick: (Commit) -> Unit,
+    workspaceStatus: fr.accoradd.gitspine.domain.model.WorkspaceStatus,
+    selectedItem: CommitOrWip?,
+    onItemClick: (CommitOrWip) -> Unit,
     onLoadMore: () -> Unit,
     hasMore: Boolean
 ) {
     val dateFormatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm") }
 
-    val commitDataList = commits.map { commit ->
-        CommitData(
-            hash = commit.id,
-            shortHash = commit.shortId,
-            message = commit.message,
-            author = commit.author.name,
-            date = dateFormatter.format(
-                java.time.LocalDateTime.ofInstant(
-                    commit.timestamp,
-                    java.time.ZoneId.systemDefault()
+    val commitDataList = buildList {
+        // Add WIP row if there are changes
+        if (workspaceStatus.hasChanges) {
+            add(
+                CommitData(
+                    hash = "WIP",
+                    shortHash = "WIP",
+                    message = "Modifications en cours (${workspaceStatus.stagedCount + workspaceStatus.unstagedCount} fichiers)",
+                    author = "",
+                    date = "",
+                    isSelected = selectedItem is CommitOrWip.Wip
                 )
-            ),
-            isSelected = commit.id == selectedCommit?.id
-        )
+            )
+        }
+
+        // Add regular commits
+        commits.forEach { commit ->
+            add(
+                CommitData(
+                    hash = commit.id,
+                    shortHash = commit.shortId,
+                    message = commit.message,
+                    author = commit.author.name,
+                    date = dateFormatter.format(
+                        java.time.LocalDateTime.ofInstant(
+                            commit.timestamp,
+                            java.time.ZoneId.systemDefault()
+                        )
+                    ),
+                    isSelected = selectedItem is CommitOrWip.CommitItem && selectedItem.commit.id == commit.id
+                )
+            )
+        }
     }
 
     CommitList(
         commits = commitDataList,
         onCommitClick = { commitData ->
-            commits.find { it.id == commitData.hash }?.let { commit ->
-                onCommitClick(commit)
+            if (commitData.hash == "WIP") {
+                onItemClick(CommitOrWip.Wip)
+            } else {
+                commits.find { it.id == commitData.hash }?.let { commit ->
+                    onItemClick(CommitOrWip.CommitItem(commit))
+                }
             }
         },
         onLoadMore = onLoadMore,
@@ -238,94 +306,131 @@ private fun CenterPanel(
 }
 
 @Composable
-private fun RightPanel(commit: Commit?) {
+private fun RightPanel(
+    selectedItem: CommitOrWip?,
+    workspaceStatus: fr.accoradd.gitspine.domain.model.WorkspaceStatus,
+    onStageFile: (String) -> Unit,
+    onUnstageFile: (String) -> Unit,
+    onStageAll: () -> Unit,
+    onUnstageAll: () -> Unit,
+    onDiscardChanges: (String, Boolean) -> Unit
+) {
+    when (selectedItem) {
+        is CommitOrWip.Wip -> {
+            // Show workspace changes panel
+            WorkspaceChangesPanel(
+                status = workspaceStatus,
+                onStageFile = onStageFile,
+                onUnstageFile = onUnstageFile,
+                onStageAll = onStageAll,
+                onUnstageAll = onUnstageAll,
+                onDiscardChanges = onDiscardChanges,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+        is CommitOrWip.CommitItem -> {
+            // Show commit details
+            CommitDetailsPanel(commit = selectedItem.commit)
+        }
+        null -> {
+            // No selection
+            Card(
+                modifier = Modifier.fillMaxSize().padding(8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "Sélectionnez un commit",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CommitDetailsPanel(commit: Commit) {
     Card(
         modifier = Modifier.fillMaxSize().padding(8.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
-        if (commit == null) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
+        val dateFormatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss") }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Commit hash
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    "Sélectionnez un commit",
-                    style = MaterialTheme.typography.bodyMedium,
+                    "Commit",
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Text(
+                    commit.shortId,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.tertiary
+                )
             }
-        } else {
-            val dateFormatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss") }
 
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Commit hash
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        "Commit",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        commit.shortId,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.tertiary
-                    )
-                }
+            HorizontalDivider()
 
-                HorizontalDivider()
+            // Author
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    "Auteur",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    "${commit.author.name} <${commit.author.email}>",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
 
-                // Author
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        "Auteur",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        "${commit.author.name} <${commit.author.email}>",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
+            // Date
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    "Date",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    dateFormatter.format(
+                        java.time.LocalDateTime.ofInstant(
+                            commit.timestamp,
+                            java.time.ZoneId.systemDefault()
+                        )
+                    ),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
 
-                // Date
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        "Date",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        dateFormatter.format(
-                            java.time.LocalDateTime.ofInstant(
-                                commit.timestamp,
-                                java.time.ZoneId.systemDefault()
-                            )
-                        ),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
+            HorizontalDivider()
 
-                HorizontalDivider()
-
-                // Message
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        "Message",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        commit.message,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
+            // Message
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    "Message",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    commit.message,
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
         }
     }
