@@ -2,11 +2,12 @@ package fr.accoradd.gitspine.ui.components.repository
 
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -54,6 +55,27 @@ fun RepositoryLeftPanel(
     var localExpanded by remember { mutableStateOf(true) }
     var remoteExpanded by remember { mutableStateOf(false) }
     var tagsExpanded by remember { mutableStateOf(false) }
+    var expandedFolders by remember { mutableStateOf(emptySet<String>()) }
+
+    LaunchedEffect(selectedBranch) {
+        selectedBranch?.let {
+            val parts = it.split('/')
+            if (parts.size > 1) {
+                val pathsToExpand = (1 until parts.size).map { i ->
+                    parts.take(i).joinToString("/")
+                }
+                expandedFolders = expandedFolders + pathsToExpand
+            }
+        }
+    }
+    
+    val onToggleFolder = { path: String ->
+        expandedFolders = if (expandedFolders.contains(path)) {
+            expandedFolders - path
+        } else {
+            expandedFolders + path
+        }
+    }
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -79,7 +101,6 @@ fun RepositoryLeftPanel(
             
             if (localExpanded) {
                 Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    // Pinned Search field
                     SearchField(
                         value = localBranchSearchQuery,
                         onValueChange = onLocalBranchSearch,
@@ -88,17 +109,18 @@ fun RepositoryLeftPanel(
                         placeholder = "Chercher..."
                     )
                     
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                        ScrollableContent {
-                            if (localBranches.isEmpty()) {
-                                EmptyState("Aucune branche locale")
-                            } else {
-                                BranchTreeView(
-                                    branches = localBranches,
-                                    selectedBranch = selectedBranch,
-                                    onBranchClick = onBranchClick
-                                )
-                            }
+                    LazyScrollableContent {
+                        if (localBranches.isEmpty()) {
+                            item { EmptyState("Aucune branche locale") }
+                        } else {
+                            branchTreeView(
+                                branches = localBranches,
+                                selectedBranch = selectedBranch,
+                                onBranchClick = onBranchClick,
+                                expandedFolders = expandedFolders,
+                                onToggleFolder = onToggleFolder,
+                                keyPrefix = "local"
+                            )
                         }
                     }
                 }
@@ -121,7 +143,6 @@ fun RepositoryLeftPanel(
             
             if (remoteExpanded) {
                 Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    // Pinned Search field
                     SearchField(
                         value = remoteBranchSearchQuery,
                         onValueChange = onRemoteBranchSearch,
@@ -130,25 +151,26 @@ fun RepositoryLeftPanel(
                         placeholder = "Chercher..."
                     )
                     
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                        ScrollableContent {
-                            if (remoteBranches.isEmpty()) {
-                                EmptyState("Aucune branche distante")
-                            } else {
-                                Column {
-                                    remoteBranches.forEach { (remote, branches) ->
-                                        RemoteSection(
-                                            remoteName = remote,
-                                            branches = branches,
-                                            selectedBranch = selectedBranch,
-                                            onBranchClick = onBranchClick
-                                        )
-                                    }
-                                    
-                                    if (hasMoreRemoteBranches) {
-                                        LoadMoreButton(onClick = onLoadMoreRemoteBranches)
-                                    }
+                    LazyScrollableContent {
+                        if (remoteBranches.isEmpty()) {
+                            item { EmptyState("Aucune branche distante") }
+                        } else {
+                            remoteBranches.forEach { (remote, branches) ->
+                                item(key = "remote-header-$remote") {
+                                    RemoteHeader(remoteName = remote, branchesCount = branches.size)
                                 }
+                                branchTreeView(
+                                    branches = branches,
+                                    selectedBranch = selectedBranch,
+                                    onBranchClick = onBranchClick,
+                                    expandedFolders = expandedFolders,
+                                    onToggleFolder = onToggleFolder,
+                                    baseLevel = 1,
+                                    keyPrefix = "remote-$remote"
+                                )
+                            }
+                            if (hasMoreRemoteBranches) {
+                                item { LoadMoreButton(onClick = onLoadMoreRemoteBranches) }
                             }
                         }
                     }
@@ -171,7 +193,6 @@ fun RepositoryLeftPanel(
             
             if (tagsExpanded) {
                 Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    // Pinned Search field
                     SearchField(
                         value = tagSearchQuery,
                         onValueChange = onTagSearch,
@@ -180,19 +201,18 @@ fun RepositoryLeftPanel(
                         placeholder = "Chercher..."
                     )
                     
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                        ScrollableContent {
-                            if (tags.isEmpty()) {
-                                EmptyState("Aucun tag")
-                            } else {
-                                TagsList(
-                                    tags = tags,
-                                    onTagClick = onTagClick
+                    LazyScrollableContent {
+                        if (tags.isEmpty()) {
+                            item { EmptyState("Aucun tag") }
+                        } else {
+                            items(tags, key = { "tag-$it" }) { tag ->
+                                TagItem(
+                                    tag = tag,
+                                    onClick = { onTagClick(tag) }
                                 )
-                                
-                                if (hasMoreTags) {
-                                    LoadMoreButton(onClick = onLoadMoreTags)
-                                }
+                            }
+                            if (hasMoreTags) {
+                                item { LoadMoreButton(onClick = onLoadMoreTags) }
                             }
                         }
                     }
@@ -203,14 +223,13 @@ fun RepositoryLeftPanel(
 }
 
 @Composable
-private fun ScrollableContent(content: @Composable ColumnScope.() -> Unit) {
-    val scrollState = rememberScrollState()
+private fun LazyScrollableContent(modifier: Modifier = Modifier, content: LazyListScope.() -> Unit) {
+    val scrollState = rememberLazyListState()
     
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scrollState)
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            state = scrollState
         ) {
             content()
         }
@@ -238,55 +257,24 @@ private fun LoadMoreButton(onClick: () -> Unit) {
 }
 
 @Composable
-private fun RemoteSection(
-    remoteName: String,
-    branches: List<String>,
-    selectedBranch: String?,
-    onBranchClick: (String) -> Unit
-) {
-    Column {
-        // Remote header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            Text(
-                text = remoteName,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "(${branches.size})",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        // Branches du remote
-        BranchTreeView(
-            branches = branches,
-            selectedBranch = selectedBranch,
-            onBranchClick = onBranchClick,
-            modifier = Modifier.padding(start = 8.dp)
+private fun RemoteHeader(remoteName: String, branchesCount: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = remoteName,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary
         )
-    }
-}
-
-@Composable
-private fun TagsList(
-    tags: List<String>,
-    onTagClick: (String) -> Unit
-) {
-    Column {
-        tags.forEach { tag ->
-            TagItem(
-                tag = tag,
-                onClick = { onTagClick(tag) }
-            )
-        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "($branchesCount)",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
