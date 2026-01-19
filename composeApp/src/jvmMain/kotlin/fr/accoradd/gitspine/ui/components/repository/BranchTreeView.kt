@@ -90,7 +90,7 @@ private fun FolderItem(
     onBranchClick: (String) -> Unit,
     level: Int
 ) {
-    var expanded by remember { mutableStateOf(true) }
+    var expanded by remember { mutableStateOf(selectedBranch?.startsWith(folder.name) ?: false) }
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
 
