@@ -1,7 +1,9 @@
 package fr.accoradd.gitspine.ui.components.common
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
@@ -10,6 +12,8 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import java.awt.Cursor
@@ -26,9 +30,17 @@ fun ThreeColumnResizablePanes(
 ) {
     var leftWidth by remember { mutableStateOf(initialLeftWidth) }
     var rightWidth by remember { mutableStateOf(initialRightWidth) }
+    var leftWidthAtStartOfDrag by remember { mutableStateOf(initialLeftWidth) }
+    var rightWidthAtStartOfDrag by remember { mutableStateOf(initialRightWidth) }
+
+    val density = LocalDensity.current
 
     BoxWithConstraints(modifier = modifier) {
         val totalWidth = constraints.maxWidth.toFloat()
+        val dividerWidthDp = 4.dp
+        val dividerWidthPx = with(density) { dividerWidthDp.toPx() }
+        // Calculate available width for panes (excluding dividers)
+        val availableWidth = totalWidth - (dividerWidthPx * 2)
 
         Layout(
             content = {
@@ -39,12 +51,15 @@ fun ThreeColumnResizablePanes(
 
                 // Left divider
                 VerticalDivider(
-                    onDrag = { delta ->
-                        val newLeftWidth = (leftWidth + delta / totalWidth).coerceIn(
+                    onDragStart = { leftWidthAtStartOfDrag = leftWidth },
+                    onPositionChange = { deltaX ->
+                        val ratio = leftWidthAtStartOfDrag + (deltaX / availableWidth)
+                        val newLeftWidth = ratio.coerceIn(
                             minPaneWidth,
                             1f - rightWidth - minPaneWidth
                         )
                         leftWidth = newLeftWidth
+                        println("Left width: $newLeftWidth, $deltaX, $ratio")
                     }
                 )
 
@@ -55,8 +70,10 @@ fun ThreeColumnResizablePanes(
 
                 // Right divider
                 VerticalDivider(
-                    onDrag = { delta ->
-                        val newRightWidth = (rightWidth - delta / totalWidth).coerceIn(
+                    onDragStart = { rightWidthAtStartOfDrag = rightWidth },
+                    onPositionChange = { deltaX ->
+                        val ratio = rightWidthAtStartOfDrag - (deltaX / availableWidth)
+                        val newRightWidth = ratio.coerceIn(
                             minPaneWidth,
                             1f - leftWidth - minPaneWidth
                         )
@@ -119,7 +136,8 @@ fun ThreeColumnResizablePanes(
 
 @Composable
 private fun VerticalDivider(
-    onDrag: (delta: Float) -> Unit
+    onDragStart: () -> Unit,
+    onPositionChange: (absoluteX: Float) -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -128,9 +146,16 @@ private fun VerticalDivider(
             .background(MaterialTheme.colorScheme.outlineVariant)
             .pointerHoverIcon(PointerIcon(Cursor(Cursor.E_RESIZE_CURSOR)))
             .pointerInput(Unit) {
-                detectDragGestures { change, dragAmount ->
-                    change.consume()
-                    onDrag(dragAmount.x)
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    onDragStart()
+                    var totalAccumulatedDelta = 0f
+                    drag(down.id) { change ->
+                        val dragAmount = change.position.x - change.previousPosition.x
+                        totalAccumulatedDelta += dragAmount
+                        onPositionChange(totalAccumulatedDelta)
+                        change.consume()
+                    }
                 }
             }
     )

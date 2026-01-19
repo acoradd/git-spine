@@ -70,7 +70,6 @@ private fun FolderItem(
                     if (indent == 0) MaterialTheme.colorScheme.surfaceContainerLow
                     else MaterialTheme.colorScheme.surface
                 )
-                .padding(start = (indent * 16).dp)
                 .height(36.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -78,6 +77,8 @@ private fun FolderItem(
             Row(
                 modifier = Modifier
                     .weight(1f)
+                    .horizontalScroll(rememberScrollState())
+                    .padding(start = (indent * 16).dp)
                     .clickable { expanded = !expanded }
                     .padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -98,8 +99,10 @@ private fun FolderItem(
                 Text(
                     text = folder.name,
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f)
+                    maxLines = 1,
+                    overflow = TextOverflow.Visible
                 )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "(${allFilePaths.size})",
                     style = MaterialTheme.typography.bodySmall,
@@ -172,13 +175,15 @@ private fun FileItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = (indent * 16 + 28).dp, end = 8.dp)
             .height(32.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .horizontalScroll(rememberScrollState())
+                .padding(start = (indent * 16 + 28).dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -190,11 +195,16 @@ private fun FileItem(
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = file.name,
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Visible
             )
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(end = 8.dp)
+        ) {
             if (isStaged) {
                 IconButton(
                     onClick = { onAction(file.path, FileTreeAction.Unstage) },

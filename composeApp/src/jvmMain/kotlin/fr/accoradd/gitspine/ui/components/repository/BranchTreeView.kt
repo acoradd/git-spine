@@ -3,10 +3,12 @@ package fr.accoradd.gitspine.ui.components.repository
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Folder
@@ -104,6 +106,7 @@ private fun FolderItem(
                 )
                 .clickable { expanded = !expanded }
                 .hoverable(interactionSource)
+                .horizontalScroll(rememberScrollState())
                 .padding(start = (level * 16 + 8).dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -130,7 +133,7 @@ private fun FolderItem(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Visible
             )
         }
 
@@ -175,6 +178,7 @@ private fun LeafItem(
             )
             .clickable(onClick = onClick)
             .hoverable(interactionSource)
+            .horizontalScroll(rememberScrollState())
             .padding(start = (level * 16 + 32).dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -197,7 +201,7 @@ private fun LeafItem(
             color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
             else MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Visible
         )
     }
 }

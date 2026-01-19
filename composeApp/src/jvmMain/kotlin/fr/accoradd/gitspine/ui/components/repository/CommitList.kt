@@ -3,10 +3,12 @@ package fr.accoradd.gitspine.ui.components.repository
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -251,6 +253,7 @@ private fun CommitRow(
                     modifier = Modifier
                         .weight(width)
                         .fillMaxHeight()
+                        .horizontalScroll(rememberScrollState())
                         .padding(horizontal = 12.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
@@ -269,7 +272,7 @@ private fun CommitRow(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.tertiary,
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    overflow = TextOverflow.Visible
                                 )
                             }
                             "message" -> {
@@ -282,7 +285,7 @@ private fun CommitRow(
                                         MaterialTheme.colorScheme.onSurface
                                     },
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    overflow = TextOverflow.Visible
                                 )
                             }
                             "author" -> {
@@ -295,7 +298,7 @@ private fun CommitRow(
                                         MaterialTheme.colorScheme.onSurfaceVariant
                                     },
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    overflow = TextOverflow.Visible
                                 )
                             }
                             "date" -> {
@@ -308,7 +311,7 @@ private fun CommitRow(
                                         MaterialTheme.colorScheme.onSurfaceVariant
                                     },
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    overflow = TextOverflow.Visible
                                 )
                             }
                         }
