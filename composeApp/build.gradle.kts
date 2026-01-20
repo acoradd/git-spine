@@ -33,7 +33,7 @@ kotlin {
             implementation(libs.kotlin.test)
         }
         jvmMain.dependencies {
-            implementation(compose.desktop.currentOs)
+            implementation(compose.desktop.currentOs) { exclude(group = "org.jetbrains.compose.material") }
             implementation(libs.kotlinx.coroutinesSwing)
 
             // Jewel (IntelliJ UI) - Using latest stable version 0.15.2

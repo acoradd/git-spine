@@ -15,8 +15,8 @@ import java.nio.file.Path
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.TextField
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
+import fr.accoradd.gitspine.ui.components.common.SimpleTextField
 import fr.accoradd.gitspine.ui.theme.jewelColors
 import fr.accoradd.gitspine.ui.theme.jewelTextStyle
 
@@ -57,7 +57,7 @@ fun AddRepositoryScreen(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("URL du dépôt")
-                TextField(
+                SimpleTextField(
                     value = url,
                     onValueChange = { url = it },
                     modifier = Modifier.fillMaxWidth()
@@ -70,7 +70,7 @@ fun AddRepositoryScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    TextField(
+                    SimpleTextField(
                         value = destinationPath?.toString() ?: "",
                         onValueChange = {},
                         modifier = Modifier.weight(1f),

@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.onEach
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.TextField
 
 @OptIn(FlowPreview::class)
 @Composable
@@ -37,17 +36,17 @@ fun SearchField(
             .launchIn(this)
     }
 
-    TextField(
+    SimpleTextField(
         value = value,
-        onValueChange = { 
+        onValueChange = {
             onValueChange(it)
             textState.value = it
         },
-        modifier = modifier.fillMaxWidth(),
-        placeholder = { Text(placeholder) },
+        modifier = modifier,
+        placeholder = placeholder,
         leadingIcon = {
             // TODO: Use Jewel search icon resource
-            Text("🔍") 
+            Text("🔍")
         },
         trailingIcon = {
             if (value.isNotEmpty()) {

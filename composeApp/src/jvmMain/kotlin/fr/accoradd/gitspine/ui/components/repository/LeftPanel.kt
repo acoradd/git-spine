@@ -237,8 +237,8 @@ private fun LazyScrollableContent(modifier: Modifier = Modifier, content: LazyLi
         }
 
         VerticalScrollbar(
-            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
-            adapter = rememberScrollbarAdapter(scrollState)
+            scrollState = scrollState,
+            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight()
         )
     }
 }

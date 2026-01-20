@@ -131,7 +131,7 @@ fun CommitList(
             }
 
             VerticalScrollbar(
-                adapter = rememberScrollbarAdapter(listState),
+                scrollState = listState,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .fillMaxHeight()

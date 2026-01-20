@@ -33,7 +33,7 @@ fun App(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(JewelTheme.globalColors.paneBackground) // Fond par défaut d'IntelliJ
+                .background(JewelTheme.globalColors.panelBackground) // Fond par défaut d'IntelliJ
         ) {
             when (val screen = navController.currentScreen) {
                 is Screen.Welcome -> {
