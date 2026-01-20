@@ -1,38 +1,44 @@
 package fr.accoradd.gitspine.ui.screens.settings
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import fr.accoradd.gitspine.core.settings.Theme
+import org.jetbrains.jewel.ui.component.DefaultButton
+import org.jetbrains.jewel.ui.component.RadioButtonRow
+import org.jetbrains.jewel.ui.component.Text
+import fr.accoradd.gitspine.ui.theme.jewelColors
+import fr.accoradd.gitspine.ui.theme.jewelTextStyle
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     currentTheme: Theme,
     onThemeChange: (Theme) -> Unit,
     onBack: () -> Unit
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Paramètres") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
-                    }
-                }
-            )
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        // Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Paramètres")
+            DefaultButton(onClick = onBack) {
+                Text("Retour")
+            }
         }
-    ) { padding ->
+
+        // Content
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -42,18 +48,16 @@ fun SettingsScreen(
             ) {
                 Text(
                     "Thème de l'application",
-                    style = MaterialTheme.typography.titleMedium
                 )
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Theme.entries.forEach { theme ->
-                        val isSelected = currentTheme == theme
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { onThemeChange(theme) },
-                            label = { Text(theme.name.lowercase().replaceFirstChar { it.uppercase() }) }
+                        RadioButtonRow(
+                            text = theme.name.lowercase().replaceFirstChar { it.uppercase() },
+                            selected = currentTheme == theme,
+                            onClick = { onThemeChange(theme) }
                         )
                     }
                 }

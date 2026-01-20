@@ -16,7 +16,7 @@ kotlin {
         commonMain.dependencies {
             implementation(compose.runtime)
             implementation(compose.foundation)
-            implementation(compose.material3)
+            implementation(compose.material3) // TODO: Remove after migration to Jewel
             implementation(compose.materialIconsExtended)
             implementation(compose.ui)
             implementation(compose.components.resources)
@@ -35,6 +35,10 @@ kotlin {
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
+
+            // Jewel (IntelliJ UI) - Using latest stable version 0.15.2
+            implementation(libs.jewel.standalone)
+            implementation(libs.jewel.decorated.window)
 
             // JGit
             implementation(libs.jgit)

@@ -1,16 +1,18 @@
 package fr.accoradd.gitspine.ui.components.repository
 
-import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,6 +22,13 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import java.awt.Cursor
+import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.Divider
+import org.jetbrains.jewel.ui.Orientation
+import org.jetbrains.jewel.ui.component.VerticalScrollbar
+import org.jetbrains.jewel.ui.component.CircularProgressIndicator
+import fr.accoradd.gitspine.ui.theme.jewelColors
+import fr.accoradd.gitspine.ui.theme.JetBrainsMonoFamily
 
 data class CommitColumn(
     val id: String,
@@ -74,69 +83,59 @@ fun CommitList(
         }
     }
 
-    Surface(
-        modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.surface
+    Column(
+        modifier = modifier.fillMaxSize()
     ) {
-        Column {
-            // Header
-            ResizableColumnsHeader(
-                columns = columns,
-                columnWidths = columnWidths,
-                onWidthChanged = { columnId, newWidth ->
-                    columnWidths[columnId] = newWidth
+        // Header
+        ResizableColumnsHeader(
+            columns = columns,
+            columnWidths = columnWidths,
+            onWidthChanged = { columnId, newWidth ->
+                columnWidths[columnId] = newWidth
+            }
+        )
+
+        Divider(orientation = Orientation.Horizontal)
+
+        // Commit list with scrollbar
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                state = listState
+            ) {
+                items(commits) { commit ->
+                    CommitRow(
+                        commit = commit,
+                        columns = columns,
+                        columnWidths = columnWidths,
+                        onClick = { onCommitClick(commit) }
+                    )
+                    Divider(orientation = Orientation.Horizontal)
                 }
-            )
 
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant,
-                thickness = 1.dp
-            )
-
-            // Commit list with scrollbar
-            Box(modifier = Modifier.fillMaxSize()) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    state = listState
-                ) {
-                    items(commits) { commit ->
-                        CommitRow(
-                            commit = commit,
-                            columns = columns,
-                            columnWidths = columnWidths,
-                            onClick = { onCommitClick(commit) }
-                        )
-                        HorizontalDivider(
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                            thickness = 0.5.dp
-                        )
-                    }
-
-                    // Loading indicator at the end if there's more
-                    if (hasMore) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    strokeWidth = 2.dp
-                                )
-                            }
+                // Loading indicator at the end if there's more
+                if (hasMore) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
                     }
                 }
-
-                VerticalScrollbar(
-                    adapter = rememberScrollbarAdapter(listState),
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .fillMaxHeight()
-                )
             }
+
+            VerticalScrollbar(
+                adapter = rememberScrollbarAdapter(listState),
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
+            )
         }
     }
 }
@@ -150,8 +149,8 @@ private fun ResizableColumnsHeader(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .height(40.dp)
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .height(30.dp) // Hauteur réduite pour style IntelliJ
+            .background(jewelColors.grey(3))
     ) {
         val totalWidth = constraints.maxWidth.toFloat()
 
@@ -172,8 +171,7 @@ private fun ResizableColumnsHeader(
                 ) {
                     Text(
                         text = column.title,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = jewelColors.grey(8),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -213,7 +211,6 @@ private fun ColumnDivider(
         modifier = Modifier
             .width(4.dp)
             .fillMaxHeight()
-            .background(MaterialTheme.colorScheme.outlineVariant)
             .pointerHoverIcon(PointerIcon(Cursor(Cursor.E_RESIZE_CURSOR)))
             .pointerInput(Unit) {
                 detectDragGestures { change, dragAmount ->
@@ -231,89 +228,74 @@ private fun CommitRow(
     columnWidths: Map<String, Float>,
     onClick: () -> Unit
 ) {
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        color = if (commit.isSelected) {
-            MaterialTheme.colorScheme.primaryContainer
-        } else {
-            MaterialTheme.colorScheme.surface
-        }
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(32.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            columns.forEach { column ->
-                val width = columnWidths[column.id] ?: column.defaultWidth
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
 
-                Box(
-                    modifier = Modifier
-                        .weight(width)
-                        .fillMaxHeight()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 12.dp),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                        when (column.id) {
-                            "graph" -> {
-                                // Placeholder for graph visualization
-                                Text(
-                                    text = "●",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            "hash" -> {
-                                Text(
-                                    text = commit.shortHash,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.tertiary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Visible
-                                )
-                            }
-                            "message" -> {
-                                Text(
-                                    text = commit.message,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = if (commit.isSelected) {
-                                        MaterialTheme.colorScheme.onPrimaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurface
-                                    },
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Visible
-                                )
-                            }
-                            "author" -> {
-                                Text(
-                                    text = commit.author,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = if (commit.isSelected) {
-                                        MaterialTheme.colorScheme.onPrimaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Visible
-                                )
-                            }
-                            "date" -> {
-                                Text(
-                                    text = commit.date,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = if (commit.isSelected) {
-                                        MaterialTheme.colorScheme.onPrimaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Visible
-                                )
-                            }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(28.dp) // Hauteur réduite pour style IntelliJ
+            .background(
+                when {
+                    commit.isSelected -> jewelColors.blue(2)
+                    isHovered -> jewelColors.grey(3)
+                    else -> jewelColors.grey(1)
+                }
+            )
+            .clickable(onClick = onClick)
+            .hoverable(interactionSource),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        columns.forEach { column ->
+            val width = columnWidths[column.id] ?: column.defaultWidth
+
+            Box(
+                modifier = Modifier
+                    .weight(width)
+                    .fillMaxHeight()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 12.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                    when (column.id) {
+                        "graph" -> {
+                            // Placeholder for graph visualization
+                            Text(
+                                text = "●",
+                                                    color = jewelColors.blue(4)
+                            )
+                        }
+                        "hash" -> {
+                            Text(
+                                text = commit.shortHash,
+                                color = jewelColors.grey(8),
+                                maxLines = 1,
+                                overflow = TextOverflow.Visible
+                            )
+                        }
+                        "message" -> {
+                            Text(
+                                text = commit.message,
+                                                    color = if (commit.isSelected) jewelColors.grey(1) else jewelColors.grey(12),
+                                maxLines = 1,
+                                overflow = TextOverflow.Visible
+                            )
+                        }
+                        "author" -> {
+                            Text(
+                                text = commit.author,
+                                                    color = if (commit.isSelected) jewelColors.grey(1) else jewelColors.grey(8),
+                                maxLines = 1,
+                                overflow = TextOverflow.Visible
+                            )
+                        }
+                        "date" -> {
+                            Text(
+                                text = commit.date,
+                                                    color = if (commit.isSelected) jewelColors.grey(1) else jewelColors.grey(8),
+                                maxLines = 1,
+                                overflow = TextOverflow.Visible
+                            )
                         }
                     }
                 }

@@ -1,10 +1,8 @@
 package fr.accoradd.gitspine.ui.screens.add
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import fr.accoradd.gitspine.domain.model.Notification
@@ -14,8 +12,14 @@ import fr.accoradd.gitspine.core.notifications.NotificationManager
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import java.nio.file.Path
+import org.jetbrains.jewel.ui.component.DefaultButton
+import org.jetbrains.jewel.ui.component.OutlinedButton
+import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.TextField
+import org.jetbrains.jewel.ui.component.CircularProgressIndicator
+import fr.accoradd.gitspine.ui.theme.jewelColors
+import fr.accoradd.gitspine.ui.theme.jewelTextStyle
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddRepositoryScreen(
     onBack: () -> Unit,
@@ -27,53 +31,62 @@ fun AddRepositoryScreen(
     var destinationPath by remember { mutableStateOf<Path?>(null) }
     var isCloning by remember { mutableStateOf(false) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Cloner un dépôt") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
-                    }
-                }
-            )
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        // Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Cloner un dépôt")
+            DefaultButton(onClick = onBack) {
+                Text("Retour")
+            }
         }
-    ) { padding ->
+
+        // Content
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            OutlinedTextField(
-                value = url,
-                onValueChange = { url = it },
-                label = { Text("URL du dépôt") },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedTextField(
-                    value = destinationPath?.toString() ?: "",
-                    onValueChange = {},
-                    label = { Text("Dossier de destination") },
-                    modifier = Modifier.weight(1f),
-                    readOnly = true
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("URL du dépôt")
+                TextField(
+                    value = url,
+                    onValueChange = { url = it },
+                    modifier = Modifier.fillMaxWidth()
                 )
-                Button(onClick = {
-                    scope.launch {
-                        destinationPath = FileDialogs.openDirectory("Sélectionner le répertoire de destination")
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Dossier de destination")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    TextField(
+                        value = destinationPath?.toString() ?: "",
+                        onValueChange = {},
+                        modifier = Modifier.weight(1f),
+                        readOnly = true
+                    )
+                    OutlinedButton(onClick = {
+                        scope.launch {
+                            destinationPath = FileDialogs.openDirectory("Sélectionner le répertoire de destination")
+                        }
+                    }) {
+                        Text("Parcourir")
                     }
-                }) {
-                    Text("Parcourir")
                 }
             }
 
-            Button(
+            DefaultButton(
                 onClick = {
                     val dest = destinationPath
                     if (url.isNotBlank() && dest != null) {
@@ -123,7 +136,9 @@ fun AddRepositoryScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (isCloning) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Clonage en cours...")
                 } else {
                     Text("Cloner")
                 }

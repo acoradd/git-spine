@@ -25,6 +25,8 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
+        // Jewel repository
+        maven("https://packages.jetbrains.team/maven/p/kpm/public/")
     }
 }
 

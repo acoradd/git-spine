@@ -7,8 +7,6 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,6 +19,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import java.awt.Cursor
+import fr.accoradd.gitspine.ui.theme.jewelColors
 
 @Composable
 fun ThreeColumnResizablePanes(
@@ -138,12 +137,13 @@ private fun Pane(
     cornerRadius: androidx.compose.ui.unit.Dp,
     content: @Composable () -> Unit
 ) {
-    Surface(
+    // Remplacement de Surface par Box avec background Jewel
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .clip(RoundedCornerShape(cornerRadius)),
-        color = MaterialTheme.colorScheme.surface,
-        content = content
+            .clip(RoundedCornerShape(cornerRadius))
+            .background(jewelColors.grey(2)), // Couleur de surface légère
+        content = { content() }
     )
 }
 

@@ -8,6 +8,7 @@ kotlinx-coroutines = "1.10.2"
 koin = "4.0.4"
 jgit = "7.2.0.202503040940-r"
 jna = "5.17.0"
+jewel = "0.15.2"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -29,6 +30,11 @@ jgit-ssh-apache = { module = "org.eclipse.jgit:org.eclipse.jgit.ssh.apache", ver
 # JNA (Native OS access)
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
+
+# Jewel (IntelliJ UI for Compose Desktop)
+jewel-standalone = { module = "org.jetbrains.jewel:jewel-int-ui-standalone", version.ref = "jewel" }
+jewel-decorated-window = { module = "org.jetbrains.jewel:jewel-int-ui-decorated-window", version.ref = "jewel" }
+
 
 [plugins]
 composeHotReload = { id = "org.jetbrains.compose.hot-reload", version.ref = "composeHotReload" }

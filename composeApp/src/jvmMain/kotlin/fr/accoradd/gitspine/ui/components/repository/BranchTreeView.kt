@@ -10,14 +10,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -27,6 +19,8 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import fr.accoradd.gitspine.ui.theme.jewelColors
+import org.jetbrains.jewel.ui.component.Text
 
 sealed class TreeNode {
     data class Folder(
@@ -106,38 +100,33 @@ private fun FolderItem(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                if (isHovered) MaterialTheme.colorScheme.surfaceContainerHighest
-                else MaterialTheme.colorScheme.surface
+                if (isHovered) jewelColors.grey(3) else jewelColors.grey(1)
             )
             .pointerHoverIcon(PointerIcon.Hand)
             .clickable(onClick = onToggleExpand)
             .hoverable(interactionSource)
             .horizontalScroll(rememberScrollState())
-            .padding(start = (level * 16 + 8).dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
+            .padding(start = (level * 16 + 8).dp, end = 8.dp, top = 2.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        Text(
+            text = if (isExpanded) "▼" else "▶",
+            color = jewelColors.grey(8),
+            modifier = Modifier.size(12.dp)
         )
 
         Spacer(modifier = Modifier.width(4.dp))
 
-        Icon(
-            imageVector = if (isExpanded) Icons.Default.FolderOpen else Icons.Default.Folder,
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        Text(
+            text = if (isExpanded) "📂" else "📁",
+            modifier = Modifier.size(16.dp)
         )
 
         Spacer(modifier = Modifier.width(8.dp))
 
         Text(
             text = folder.name,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = jewelColors.grey(12),
             maxLines = 1,
             overflow = TextOverflow.Visible
         )
@@ -159,16 +148,16 @@ private fun LeafItem(
             .fillMaxWidth()
             .background(
                 when {
-                    isSelected -> MaterialTheme.colorScheme.primaryContainer
-                    isHovered -> MaterialTheme.colorScheme.surfaceContainerHighest
-                    else -> MaterialTheme.colorScheme.surface
+                    isSelected -> jewelColors.blue(2) // Sélection
+                    isHovered -> jewelColors.grey(3) // Survol
+                    else -> jewelColors.grey(1) // Défaut
                 }
             )
             .pointerHoverIcon(PointerIcon.Hand)
             .clickable(onClick = onClick)
             .hoverable(interactionSource)
             .horizontalScroll(rememberScrollState())
-            .padding(start = (level * 16 + 32).dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
+            .padding(start = (level * 16 + 32).dp, end = 8.dp, top = 2.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Branch icon (simple circle)
@@ -176,9 +165,7 @@ private fun LeafItem(
             modifier = Modifier
                 .size(8.dp)
                 .background(
-                    if (isSelected) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                    shape = MaterialTheme.shapes.small
+                    if (isSelected) jewelColors.grey(1) else jewelColors.grey(8)
                 )
         )
 
@@ -186,9 +173,7 @@ private fun LeafItem(
 
         Text(
             text = leaf.name,
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
-            else MaterialTheme.colorScheme.onSurface,
+            color = if (isSelected) jewelColors.grey(1) else jewelColors.grey(12),
             maxLines = 1,
             overflow = TextOverflow.Visible
         )
@@ -211,7 +196,7 @@ private fun buildTree(branches: List<String>): List<TreeNode> {
         }
     }
 
-    val priorityBranches = listOf("master", "main", "develop")
+    val priorityBranches = listOf("main", "develop", "master")
 
     fun getCategory(node: TreeNode): Int {
         return when {

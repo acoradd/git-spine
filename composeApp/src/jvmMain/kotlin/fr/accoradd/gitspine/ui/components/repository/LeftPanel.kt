@@ -1,6 +1,5 @@
 package fr.accoradd.gitspine.ui.components.repository
 
-import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
@@ -12,12 +11,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -25,6 +19,10 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.dp
 import fr.accoradd.gitspine.ui.components.common.SearchField
 import fr.accoradd.gitspine.ui.components.common.SectionHeader
+import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.VerticalScrollbar
+import org.jetbrains.jewel.ui.component.Link
+import fr.accoradd.gitspine.ui.theme.jewelColors
 
 @Composable
 fun RepositoryLeftPanel(
@@ -85,143 +83,138 @@ fun RepositoryLeftPanel(
         }
     }
 
-    Surface(
-        modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp
+    // Jewel gère le fond par défaut, pas besoin de Surface
+    Column(
+        modifier = modifier.fillMaxSize()
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // Section: Branches locales
-            val localBranchesCount = if (localBranches.size >= 100) "99+" else localBranches.size.toString()
+        // Section: Branches locales
+        val localBranchesCount = if (localBranches.size >= 100) "99+" else localBranches.size.toString()
 
-            SectionHeader(
-                title = "Branches locales ($localBranchesCount)",
-                expanded = localExpanded,
-                onToggle = {
-                    localExpanded = !localExpanded
-                    if (localExpanded && localBranches.isEmpty()) {
-                        onLoadLocalBranches()
+        SectionHeader(
+            title = "Branches locales ($localBranchesCount)",
+            expanded = localExpanded,
+            onToggle = {
+                localExpanded = !localExpanded
+                if (localExpanded && localBranches.isEmpty()) {
+                    onLoadLocalBranches()
+                }
+            }
+        )
+
+        if (localExpanded) {
+            Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                SearchField(
+                    value = localBranchSearchQuery,
+                    onValueChange = onLocalBranchSearch,
+                    onDebouncedValueChange = onLocalBranchSearch,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    placeholder = "Chercher..."
+                )
+
+                LazyScrollableContent {
+                    if (localBranches.isEmpty()) {
+                        item { EmptyState("Aucune branche locale") }
+                    } else {
+                        branchTreeView(
+                            branches = localBranches,
+                            selectedBranch = selectedBranch,
+                            onBranchClick = onBranchClick,
+                            expandedFolders = expandedFolders,
+                            onToggleFolder = onToggleFolder,
+                            keyPrefix = "local"
+                        )
                     }
                 }
-            )
+            }
+        }
 
-            if (localExpanded) {
-                Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    SearchField(
-                        value = localBranchSearchQuery,
-                        onValueChange = onLocalBranchSearch,
-                        onDebouncedValueChange = onLocalBranchSearch,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        placeholder = "Chercher..."
-                    )
+        // Section: Branches distantes
+        val remoteBranchesCount = remoteBranches.values.sumOf { it.size }
+        val remoteBranchesDisplay = if (remoteBranchesCount >= 100) "99+" else remoteBranchesCount.toString()
 
-                    LazyScrollableContent {
-                        if (localBranches.isEmpty()) {
-                            item { EmptyState("Aucune branche locale") }
-                        } else {
+        SectionHeader(
+            title = "Branches distantes ($remoteBranchesDisplay)",
+            expanded = remoteExpanded,
+            onToggle = {
+                remoteExpanded = !remoteExpanded
+                if (remoteExpanded && remoteBranches.isEmpty()) {
+                    onLoadRemoteBranches()
+                }
+            }
+        )
+
+        if (remoteExpanded) {
+            Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                SearchField(
+                    value = remoteBranchSearchQuery,
+                    onValueChange = onRemoteBranchSearch,
+                    onDebouncedValueChange = onRemoteBranchSearch,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    placeholder = "Chercher..."
+                )
+
+                LazyScrollableContent {
+                    if (remoteBranches.isEmpty()) {
+                        item { EmptyState("Aucune branche distante") }
+                    } else {
+                        remoteBranches.forEach { (remote, branches) ->
+                            item(key = "remote-header-$remote") {
+                                RemoteHeader(remoteName = remote, branchesCount = branches.size)
+                            }
                             branchTreeView(
-                                branches = localBranches,
+                                branches = branches,
                                 selectedBranch = selectedBranch,
                                 onBranchClick = onBranchClick,
                                 expandedFolders = expandedFolders,
                                 onToggleFolder = onToggleFolder,
-                                keyPrefix = "local"
+                                baseLevel = 1,
+                                keyPrefix = "remote-$remote"
                             )
                         }
-                    }
-                }
-            }
-
-            // Section: Branches distantes
-            val remoteBranchesCount = remoteBranches.values.sumOf { it.size }
-            val remoteBranchesDisplay = if (remoteBranchesCount >= 100) "99+" else remoteBranchesCount.toString()
-
-            SectionHeader(
-                title = "Branches distantes ($remoteBranchesDisplay)",
-                expanded = remoteExpanded,
-                onToggle = {
-                    remoteExpanded = !remoteExpanded
-                    if (remoteExpanded && remoteBranches.isEmpty()) {
-                        onLoadRemoteBranches()
-                    }
-                }
-            )
-
-            if (remoteExpanded) {
-                Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    SearchField(
-                        value = remoteBranchSearchQuery,
-                        onValueChange = onRemoteBranchSearch,
-                        onDebouncedValueChange = onRemoteBranchSearch,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        placeholder = "Chercher..."
-                    )
-
-                    LazyScrollableContent {
-                        if (remoteBranches.isEmpty()) {
-                            item { EmptyState("Aucune branche distante") }
-                        } else {
-                            remoteBranches.forEach { (remote, branches) ->
-                                item(key = "remote-header-$remote") {
-                                    RemoteHeader(remoteName = remote, branchesCount = branches.size)
-                                }
-                                branchTreeView(
-                                    branches = branches,
-                                    selectedBranch = selectedBranch,
-                                    onBranchClick = onBranchClick,
-                                    expandedFolders = expandedFolders,
-                                    onToggleFolder = onToggleFolder,
-                                    baseLevel = 1,
-                                    keyPrefix = "remote-$remote"
-                                )
-                            }
-                            if (hasMoreRemoteBranches) {
-                                item { LoadMoreButton(onClick = onLoadMoreRemoteBranches) }
-                            }
+                        if (hasMoreRemoteBranches) {
+                            item { LoadMoreButton(onClick = onLoadMoreRemoteBranches) }
                         }
                     }
                 }
             }
+        }
 
-            // Section: Tags
-            val tagsCount = if (tags.size >= 100) "99+" else tags.size.toString()
+        // Section: Tags
+        val tagsCount = if (tags.size >= 100) "99+" else tags.size.toString()
 
-            SectionHeader(
-                title = "Tags ($tagsCount)",
-                expanded = tagsExpanded,
-                onToggle = {
-                    tagsExpanded = !tagsExpanded
-                    if (tagsExpanded && tags.isEmpty()) {
-                        onLoadTags()
-                    }
+        SectionHeader(
+            title = "Tags ($tagsCount)",
+            expanded = tagsExpanded,
+            onToggle = {
+                tagsExpanded = !tagsExpanded
+                if (tagsExpanded && tags.isEmpty()) {
+                    onLoadTags()
                 }
-            )
+            }
+        )
 
-            if (tagsExpanded) {
-                Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    SearchField(
-                        value = tagSearchQuery,
-                        onValueChange = onTagSearch,
-                        onDebouncedValueChange = onTagSearch,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        placeholder = "Chercher..."
-                    )
+        if (tagsExpanded) {
+            Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                SearchField(
+                    value = tagSearchQuery,
+                    onValueChange = onTagSearch,
+                    onDebouncedValueChange = onTagSearch,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    placeholder = "Chercher..."
+                )
 
-                    LazyScrollableContent {
-                        if (tags.isEmpty()) {
-                            item { EmptyState("Aucun tag") }
-                        } else {
-                            items(tags, key = { "tag-$it" }) { tag ->
-                                TagItem(
-                                    tag = tag,
-                                    onClick = { onTagClick(tag) }
-                                )
-                            }
-                            if (hasMoreTags) {
-                                item { LoadMoreButton(onClick = onLoadMoreTags) }
-                            }
+                LazyScrollableContent {
+                    if (tags.isEmpty()) {
+                        item { EmptyState("Aucun tag") }
+                    } else {
+                        items(tags, key = { "tag-$it" }) { tag ->
+                            TagItem(
+                                tag = tag,
+                                onClick = { onTagClick(tag) }
+                            )
+                        }
+                        if (hasMoreTags) {
+                            item { LoadMoreButton(onClick = onLoadMoreTags) }
                         }
                     }
                 }
@@ -256,12 +249,10 @@ private fun LoadMoreButton(onClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
-        TextButton(
-            onClick = onClick,
-            modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
-        ) {
-            Text("Charger plus...")
-        }
+        Link(
+            text = "Charger plus...",
+            onClick = onClick
+        )
     }
 }
 
@@ -270,19 +261,17 @@ private fun RemoteHeader(remoteName: String, branchesCount: Int) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .background(jewelColors.grey(3)) // Fond légèrement plus foncé
+            .padding(horizontal = 16.dp, vertical = 4.dp)
     ) {
         Text(
             text = remoteName,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary
+            color = jewelColors.blue(4)
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = "($branchesCount)",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = jewelColors.grey(8)
         )
     }
 }
@@ -298,33 +287,26 @@ private fun TagItem(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                when {
-                    isHovered -> MaterialTheme.colorScheme.surfaceContainerHighest
-                    else -> MaterialTheme.colorScheme.surface
-                }
+                if (isHovered) jewelColors.grey(3) else jewelColors.grey(1)
             )
             .pointerHoverIcon(PointerIcon.Hand)
             .clickable(onClick = onClick)
             .hoverable(interactionSource)
-            .padding(horizontal = 24.dp, vertical = 6.dp),
+            .padding(horizontal = 24.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Tag icon
+        // Tag icon (simple box for now)
         Box(
             modifier = Modifier
                 .size(8.dp)
-                .background(
-                    MaterialTheme.colorScheme.tertiary,
-                    shape = MaterialTheme.shapes.small
-                )
+                .background(jewelColors.yellow(4))
         )
 
         Spacer(modifier = Modifier.width(8.dp))
 
         Text(
             text = tag,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
+            color = jewelColors.grey(12)
         )
     }
 }
@@ -338,8 +320,7 @@ private fun EmptyState(message: String) {
     ) {
         Text(
             text = message,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = jewelColors.grey(8)
         )
     }
 }

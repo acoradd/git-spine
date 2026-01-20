@@ -1,11 +1,7 @@
 package fr.accoradd.gitspine.ui.screens.repository
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,6 +28,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import java.time.format.DateTimeFormatter
+import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.Divider
+import org.jetbrains.jewel.ui.Orientation
+import org.jetbrains.jewel.ui.component.IconButton
+import org.jetbrains.jewel.ui.component.Icon
+import fr.accoradd.gitspine.ui.theme.jewelColors
 
 // Sealed class to represent either a commit or WIP
 sealed class CommitOrWip {
@@ -39,7 +41,6 @@ sealed class CommitOrWip {
     data class CommitItem(val commit: Commit) : CommitOrWip()
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RepositoryScreen(
     viewModel: GraphViewModel,
@@ -215,66 +216,66 @@ fun RepositoryScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // TODO: Replace with actual logo
-                        Box(modifier = Modifier.size(32.dp).padding(4.dp), contentAlignment = Alignment.Center) {
-                            Text("GS")
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Top Bar
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp)
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Logo
+            Box(modifier = Modifier.size(32.dp).padding(4.dp), contentAlignment = Alignment.Center) {
+                Text("GS")
+            }
+            
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Repository Selector
+            RepositoryDropdown(
+                recentRepositories = recentRepositories,
+                onOpen = {
+                    scope.launch {
+                        val path = FileDialogs.openDirectory("Open Git Repository")
+                        if (path != null) {
+                            navController.navigateTo(Screen.Repository(path))
                         }
-                        
-                        // Repository Selector
-                        RepositoryDropdown(
-                            recentRepositories = recentRepositories,
-                            onOpen = {
-                                scope.launch {
-                                    val path = FileDialogs.openDirectory("Open Git Repository")
-                                    if (path != null) {
-                                        navController.navigateTo(Screen.Repository(path))
-                                    }
-                                }
-                            },
-                            onClone = {
-                                navController.navigateTo(Screen.AddRepository)
-                            },
-                            onSelect = { path ->
-                                navController.navigateTo(Screen.Repository(path))
-                            },
-                            trigger = { onClick ->
-                                TextButton(onClick = onClick) {
-                                    Text(screenState.path.fileName.toString(), style = MaterialTheme.typography.titleMedium)
-                                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                                }
-                            }
-                        )
                     }
                 },
-                actions = {
-                    // Git Actions
-                    TextButton(onClick = { /* TODO */ }) { Text("Fetch") }
-                    TextButton(onClick = { /* TODO */ }) { Text("Pull") }
-                    TextButton(onClick = { /* TODO */ }) { Text("Push") }
-                    TextButton(onClick = { /* TODO */ }) { Text("Stash") }
-                    TextButton(onClick = { /* TODO */ }) { Text("Unstash") }
-                    TextButton(onClick = { /* TODO */ }) { Text("New Branch") }
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    // Add Repo & Settings
-                    IconButton(onClick = { navController.navigateTo(Screen.AddRepository) }) {
-                        Icon(Icons.Default.Add, contentDescription = "Ajouter un dépôt")
-                    }
-                    IconButton(onClick = { navController.navigateTo(Screen.Settings) }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Paramètres")
-                    }
-                }
+                onClone = {
+                    navController.navigateTo(Screen.AddRepository)
+                },
+                onSelect = { path ->
+                    navController.navigateTo(Screen.Repository(path))
+                },
+                currentRepoName = screenState.path.fileName.toString()
             )
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // Git Actions
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                ActionLink("Fetch") { /* TODO */ }
+                ActionLink("Pull") { /* TODO */ }
+                ActionLink("Push") { /* TODO */ }
+                ActionLink("Stash") { /* TODO */ }
+                ActionLink("Unstash") { /* TODO */ }
+                ActionLink("New Branch") { /* TODO */ }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // Add Repo & Settings
+            // TODO: Use Jewel Icons
+            Text("+", modifier = Modifier.clickable { navController.navigateTo(Screen.AddRepository) })
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("⚙", modifier = Modifier.clickable { navController.navigateTo(Screen.Settings) })
         }
-    ) { padding ->
+
+        // Content
         ThreeColumnResizablePanes(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(4.dp),
+            modifier = Modifier.fillMaxSize().padding(4.dp),
             initialLeftWidth = 0.2f,
             initialRightWidth = 0.25f,
             leftContent = {
@@ -338,6 +339,15 @@ fun RepositoryScreen(
             }
         )
     }
+}
+
+@Composable
+private fun ActionLink(text: String, onClick: () -> Unit) {
+    Text(
+        text = text,
+        modifier = Modifier.clickable(onClick = onClick),
+ // Style compact
+    )
 }
 
 @Composable
@@ -489,8 +499,7 @@ private fun RightPanel(
             ) {
                 Text(
                     "Sélectionnez un commit",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = jewelColors.grey(8)
                 )
             }
         }
@@ -510,32 +519,27 @@ private fun CommitDetailsPanel(commit: Commit) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 "Commit",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = jewelColors.grey(8)
             )
             Text(
                 commit.shortId,
-                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = JetBrainsMonoFamily),
-                color = MaterialTheme.colorScheme.tertiary
+                color = jewelColors.blue(4)
             )
         }
-        HorizontalDivider()
+        Divider(orientation = Orientation.Horizontal)
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 "Auteur",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = jewelColors.grey(8)
             )
             Text(
                 "${commit.author.name} <${commit.author.email}>",
-                style = MaterialTheme.typography.bodyMedium
             )
         }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 "Date",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = jewelColors.grey(8)
             )
             Text(
                 dateFormatter.format(
@@ -544,19 +548,16 @@ private fun CommitDetailsPanel(commit: Commit) {
                         java.time.ZoneId.systemDefault()
                     )
                 ),
-                style = MaterialTheme.typography.bodyMedium
             )
         }
-        HorizontalDivider()
+        Divider(orientation = Orientation.Horizontal)
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 "Message",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = jewelColors.grey(8)
             )
             Text(
                 commit.message,
-                style = MaterialTheme.typography.bodyMedium
             )
         }
     }

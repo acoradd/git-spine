@@ -1,8 +1,8 @@
 package fr.accoradd.gitspine
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import fr.accoradd.gitspine.core.settings.Theme
@@ -14,9 +14,11 @@ import fr.accoradd.gitspine.ui.screens.repository.RepositoryScreen
 import fr.accoradd.gitspine.ui.screens.settings.SettingsScreen
 import fr.accoradd.gitspine.ui.screens.welcome.WelcomeScreen
 import fr.accoradd.gitspine.ui.theme.GitSpineTheme
+import fr.accoradd.gitspine.ui.theme.jewelColors
 import fr.accoradd.gitspine.ui.viewmodel.GraphViewModel
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 
 @Composable
 fun App(
@@ -27,9 +29,11 @@ fun App(
     val scope = rememberCoroutineScope()
 
     GitSpineTheme(appTheme = currentTheme) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
+        // Jewel gère le fond, mais on s'assure de remplir l'écran
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(JewelTheme.globalColors.paneBackground) // Fond par défaut d'IntelliJ
         ) {
             when (val screen = navController.currentScreen) {
                 is Screen.Welcome -> {
