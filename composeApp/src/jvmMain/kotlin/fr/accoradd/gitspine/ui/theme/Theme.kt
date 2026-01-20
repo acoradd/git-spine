@@ -86,6 +86,7 @@ fun GitSpineTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
+        typography = AppTypography,
         content = content
     )
 }

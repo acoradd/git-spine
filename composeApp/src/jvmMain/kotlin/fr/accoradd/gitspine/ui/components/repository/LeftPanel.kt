@@ -2,21 +2,29 @@ package fr.accoradd.gitspine.ui.components.repository
 
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.dp
-import fr.accoradd.gitspine.ui.components.common.SectionHeader
 import fr.accoradd.gitspine.ui.components.common.SearchField
+import fr.accoradd.gitspine.ui.components.common.SectionHeader
 
 @Composable
 fun RepositoryLeftPanel(
@@ -24,31 +32,31 @@ fun RepositoryLeftPanel(
     remoteBranches: Map<String, List<String>> = emptyMap(),
     tags: List<String> = emptyList(),
     selectedBranch: String? = null,
-    
+
     // Search states
     localBranchSearchQuery: String = "",
     remoteBranchSearchQuery: String = "",
     tagSearchQuery: String = "",
-    
+
     // Pagination states
     hasMoreRemoteBranches: Boolean = false,
     hasMoreTags: Boolean = false,
-    
+
     // Callbacks
     onBranchClick: (String) -> Unit = {},
     onTagClick: (String) -> Unit = {},
-    
+
     onLoadLocalBranches: () -> Unit = {},
     onLocalBranchSearch: (String) -> Unit = {},
-    
+
     onLoadRemoteBranches: () -> Unit = {},
     onLoadMoreRemoteBranches: () -> Unit = {},
     onRemoteBranchSearch: (String) -> Unit = {},
-    
+
     onLoadTags: () -> Unit = {},
     onLoadMoreTags: () -> Unit = {},
     onTagSearch: (String) -> Unit = {},
-    
+
     modifier: Modifier = Modifier
 ) {
     // Expansion states
@@ -68,7 +76,7 @@ fun RepositoryLeftPanel(
             }
         }
     }
-    
+
     val onToggleFolder = { path: String ->
         expandedFolders = if (expandedFolders.contains(path)) {
             expandedFolders - path
@@ -87,18 +95,18 @@ fun RepositoryLeftPanel(
         ) {
             // Section: Branches locales
             val localBranchesCount = if (localBranches.size >= 100) "99+" else localBranches.size.toString()
-            
+
             SectionHeader(
                 title = "Branches locales ($localBranchesCount)",
                 expanded = localExpanded,
-                onToggle = { 
+                onToggle = {
                     localExpanded = !localExpanded
                     if (localExpanded && localBranches.isEmpty()) {
                         onLoadLocalBranches()
                     }
                 }
             )
-            
+
             if (localExpanded) {
                 Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     SearchField(
@@ -108,7 +116,7 @@ fun RepositoryLeftPanel(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         placeholder = "Chercher..."
                     )
-                    
+
                     LazyScrollableContent {
                         if (localBranches.isEmpty()) {
                             item { EmptyState("Aucune branche locale") }
@@ -129,18 +137,18 @@ fun RepositoryLeftPanel(
             // Section: Branches distantes
             val remoteBranchesCount = remoteBranches.values.sumOf { it.size }
             val remoteBranchesDisplay = if (remoteBranchesCount >= 100) "99+" else remoteBranchesCount.toString()
-            
+
             SectionHeader(
                 title = "Branches distantes ($remoteBranchesDisplay)",
                 expanded = remoteExpanded,
-                onToggle = { 
+                onToggle = {
                     remoteExpanded = !remoteExpanded
                     if (remoteExpanded && remoteBranches.isEmpty()) {
                         onLoadRemoteBranches()
                     }
                 }
             )
-            
+
             if (remoteExpanded) {
                 Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     SearchField(
@@ -150,7 +158,7 @@ fun RepositoryLeftPanel(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         placeholder = "Chercher..."
                     )
-                    
+
                     LazyScrollableContent {
                         if (remoteBranches.isEmpty()) {
                             item { EmptyState("Aucune branche distante") }
@@ -179,18 +187,18 @@ fun RepositoryLeftPanel(
 
             // Section: Tags
             val tagsCount = if (tags.size >= 100) "99+" else tags.size.toString()
-            
+
             SectionHeader(
                 title = "Tags ($tagsCount)",
                 expanded = tagsExpanded,
-                onToggle = { 
+                onToggle = {
                     tagsExpanded = !tagsExpanded
                     if (tagsExpanded && tags.isEmpty()) {
                         onLoadTags()
                     }
                 }
             )
-            
+
             if (tagsExpanded) {
                 Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     SearchField(
@@ -200,7 +208,7 @@ fun RepositoryLeftPanel(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         placeholder = "Chercher..."
                     )
-                    
+
                     LazyScrollableContent {
                         if (tags.isEmpty()) {
                             item { EmptyState("Aucun tag") }
@@ -225,15 +233,16 @@ fun RepositoryLeftPanel(
 @Composable
 private fun LazyScrollableContent(modifier: Modifier = Modifier, content: LazyListScope.() -> Unit) {
     val scrollState = rememberLazyListState()
-    
+
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(0.dp),
             state = scrollState
         ) {
             content()
         }
-        
+
         VerticalScrollbar(
             modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
             adapter = rememberScrollbarAdapter(scrollState)
@@ -283,35 +292,40 @@ private fun TagItem(
     tag: String,
     onClick: () -> Unit
 ) {
-    Surface(
-        onClick = onClick,
-        color = MaterialTheme.colorScheme.surface
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                when {
+                    isHovered -> MaterialTheme.colorScheme.surfaceContainerHighest
+                    else -> MaterialTheme.colorScheme.surface
+                }
+            )
+            .pointerHoverIcon(PointerIcon.Hand)
+            .clickable(onClick = onClick)
+            .hoverable(interactionSource)
+            .padding(horizontal = 24.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
+        // Tag icon
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 6.dp)
-                .pointerHoverIcon(PointerIcon.Hand),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Tag icon
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .background(
-                        MaterialTheme.colorScheme.tertiary,
-                        shape = MaterialTheme.shapes.small
-                    )
-            )
+                .size(8.dp)
+                .background(
+                    MaterialTheme.colorScheme.tertiary,
+                    shape = MaterialTheme.shapes.small
+                )
+        )
 
-            Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(8.dp))
 
-            Text(
-                text = tag,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
+        Text(
+            text = tag,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 

@@ -129,7 +129,7 @@ private fun FolderItem(
             imageVector = if (isExpanded) Icons.Default.FolderOpen else Icons.Default.Folder,
             contentDescription = null,
             modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.primary
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(modifier = Modifier.width(8.dp))

@@ -21,6 +21,7 @@ import fr.accoradd.gitspine.ui.components.repository.RepositoryLeftPanel
 import fr.accoradd.gitspine.ui.components.workspace.WorkspaceChangesPanel
 import fr.accoradd.gitspine.ui.navigation.NavController
 import fr.accoradd.gitspine.ui.navigation.Screen
+import fr.accoradd.gitspine.ui.theme.JetBrainsMonoFamily
 import fr.accoradd.gitspine.ui.viewmodel.GraphViewModel
 import fr.accoradd.gitspine.ui.viewmodel.WorkspaceViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -483,7 +484,7 @@ private fun CommitDetailsPanel(commit: Commit) {
             )
             Text(
                 commit.shortId,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = JetBrainsMonoFamily),
                 color = MaterialTheme.colorScheme.tertiary
             )
         }
