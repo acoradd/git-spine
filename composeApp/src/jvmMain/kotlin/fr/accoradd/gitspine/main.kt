@@ -1,11 +1,17 @@
 package fr.accoradd.gitspine
 
-import androidx.compose.ui.window.Window
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.application
 import fr.accoradd.gitspine.core.config.AppConfig
 import fr.accoradd.gitspine.core.di.appModule
+import fr.accoradd.gitspine.core.settings.Theme
 import fr.accoradd.gitspine.ui.navigation.Screen
 import fr.accoradd.gitspine.ui.navigation.rememberNavController
+import fr.accoradd.gitspine.ui.theme.GitSpineTheme
+import org.jetbrains.jewel.window.DecoratedWindow
 import org.koin.compose.KoinApplication
 
 fun main() = application {
@@ -16,15 +22,19 @@ fun main() = application {
             initialScreen = Screen.Welcome,
             onExit = ::exitApplication
         )
+        var currentTheme by remember { mutableStateOf(Theme.SYSTEM) }
 
-        Window(
-            onCloseRequest = ::exitApplication,
-            title = AppConfig.APP_NAME,
-        ) {
-            App(
-                navController = navController,
-                onCloseRequest = ::exitApplication
-            )
+        GitSpineTheme(appTheme = currentTheme) {
+            DecoratedWindow(
+                onCloseRequest = ::exitApplication,
+                title = AppConfig.APP_NAME,
+            ) {
+                App(
+                    navController = navController,
+                    currentTheme = currentTheme,
+                    onThemeChange = { currentTheme = it }
+                )
+            }
         }
     }
 }

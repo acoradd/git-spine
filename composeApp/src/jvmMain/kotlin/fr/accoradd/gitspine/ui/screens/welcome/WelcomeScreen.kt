@@ -33,7 +33,7 @@ fun WelcomeScreen(
         ) {
             // Title
             Text(
-                text = stringResource(Res.string.welcome_title, AppConfig.APP_NAME)
+                text = stringResource(Res.string.welcome_title, AppConfig.APP_NAME),
             )
 
             Text(
