@@ -13,10 +13,13 @@ import androidx.compose.ui.unit.dp
 import fr.accoradd.gitspine.domain.model.Branch
 import fr.accoradd.gitspine.domain.model.Commit
 import fr.accoradd.gitspine.domain.repository.GitRepository
+import fr.accoradd.gitspine.infrastructure.filesystem.FileDialogs
 import fr.accoradd.gitspine.infrastructure.git.JGitRepository
 import fr.accoradd.gitspine.ui.components.common.ThreeColumnResizablePanes
 import fr.accoradd.gitspine.ui.components.repository.CommitData
 import fr.accoradd.gitspine.ui.components.repository.CommitList
+import fr.accoradd.gitspine.ui.components.repository.RecentRepository
+import fr.accoradd.gitspine.ui.components.repository.RepositoryDropdown
 import fr.accoradd.gitspine.ui.components.repository.RepositoryLeftPanel
 import fr.accoradd.gitspine.ui.components.workspace.WorkspaceChangesPanel
 import fr.accoradd.gitspine.ui.navigation.NavController
@@ -72,6 +75,9 @@ fun RepositoryScreen(
     var isLoadingTags by remember { mutableStateOf(false) }
     
     var isRepoReady by remember { mutableStateOf(false) }
+
+    // TODO: Load this from a persistent store
+    val recentRepositories = remember { mutableListOf<RecentRepository>() }
 
     // Helper functions for loading data
     fun loadLocalBranches() {
@@ -161,6 +167,12 @@ fun RepositoryScreen(
         jgitRepo?.open(screenState.path)
         isRepoReady = true
 
+        // Add to recent repos (simple in-memory logic for now)
+        val repoName = screenState.path.fileName.toString()
+        if (recentRepositories.none { it.path == screenState.path }) {
+            recentRepositories.add(0, RecentRepository(repoName, screenState.path))
+        }
+
         workspaceViewModel.loadStatus()
 
         try {
@@ -214,10 +226,29 @@ fun RepositoryScreen(
                         }
                         
                         // Repository Selector
-                        TextButton(onClick = { /* TODO: Show repo list */ }) {
-                            Text(screenState.path.fileName.toString(), style = MaterialTheme.typography.titleMedium)
-                            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                        }
+                        RepositoryDropdown(
+                            recentRepositories = recentRepositories,
+                            onOpen = {
+                                scope.launch {
+                                    val path = FileDialogs.openDirectory("Open Git Repository")
+                                    if (path != null) {
+                                        navController.navigateTo(Screen.Repository(path))
+                                    }
+                                }
+                            },
+                            onClone = {
+                                navController.navigateTo(Screen.AddRepository)
+                            },
+                            onSelect = { path ->
+                                navController.navigateTo(Screen.Repository(path))
+                            },
+                            trigger = { onClick ->
+                                TextButton(onClick = onClick) {
+                                    Text(screenState.path.fileName.toString(), style = MaterialTheme.typography.titleMedium)
+                                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                                }
+                            }
+                        )
                     }
                 },
                 actions = {
