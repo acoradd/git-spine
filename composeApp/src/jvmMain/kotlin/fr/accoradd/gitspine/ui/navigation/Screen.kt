@@ -1,13 +1,11 @@
 package fr.accoradd.gitspine.ui.navigation
 
+import kotlinx.serialization.Serializable
 import java.nio.file.Path
 
-/**
- * Represents the different screens in the application for navigation.
- */
 sealed interface Screen {
-    data object Welcome : Screen
-    data class Repository(val path: Path) : Screen
-    data object Settings : Screen
-    data object AddRepository : Screen
+    @Serializable data object Welcome : Screen
+    @Serializable data class Repository(val path: String) : Screen
+    @Serializable data object Settings : Screen
+    @Serializable data object AddRepository : Screen
 }

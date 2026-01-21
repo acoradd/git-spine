@@ -13,7 +13,7 @@ data class RecentRepository(val name: String, val path: Path)
  * Pour l'instant, affiche simplement le nom du repository courant
  */
 @Composable
-fun RepositoryDropdown(
+fun RepositorDropdown(
     recentRepositories: List<RecentRepository>,
     onOpen: () -> Unit,
     onClone: () -> Unit,

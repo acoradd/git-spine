@@ -6,39 +6,32 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import fr.accoradd.gitspine.core.config.AppConfig
 import fr.accoradd.gitspine.domain.model.Branch
 import fr.accoradd.gitspine.domain.model.Commit
 import fr.accoradd.gitspine.domain.repository.GitRepository
-import fr.accoradd.gitspine.infrastructure.filesystem.FileDialogs
 import fr.accoradd.gitspine.infrastructure.git.JGitRepository
 import fr.accoradd.gitspine.ui.components.common.ThreeColumnResizablePanes
 import fr.accoradd.gitspine.ui.components.repository.CommitData
 import fr.accoradd.gitspine.ui.components.repository.CommitList
-import fr.accoradd.gitspine.ui.components.repository.RecentRepository
-import fr.accoradd.gitspine.ui.components.repository.RepositoryDropdown
 import fr.accoradd.gitspine.ui.components.repository.RepositoryLeftPanel
 import fr.accoradd.gitspine.ui.components.workspace.WorkspaceChangesPanel
-import fr.accoradd.gitspine.ui.navigation.NavController
+import androidx.navigation.NavController
+import fr.accoradd.gitspine.ui.navigation.AppNavigator
 import fr.accoradd.gitspine.ui.navigation.Screen
-import fr.accoradd.gitspine.ui.theme.JetBrainsMonoFamily
+import fr.accoradd.gitspine.ui.theme.jewelColors
 import fr.accoradd.gitspine.ui.viewmodel.GraphViewModel
+import fr.accoradd.gitspine.ui.viewmodel.ProjectViewModel
+import fr.accoradd.gitspine.ui.viewmodel.TitlebarViewModel
 import fr.accoradd.gitspine.ui.viewmodel.WorkspaceViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.koin.compose.koinInject
-import java.time.format.DateTimeFormatter
-import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.Orientation
-import org.jetbrains.jewel.ui.component.IconButton
-import org.jetbrains.jewel.ui.component.Icon
-import fr.accoradd.gitspine.ui.theme.jewelColors
-import fr.accoradd.gitspine.ui.viewmodel.TitlebarViewModel
-import gitspine.composeapp.generated.resources.Res
-import gitspine.composeapp.generated.resources.welcome_title
-import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.jewel.ui.component.Divider
+import org.jetbrains.jewel.ui.component.Text
+import org.koin.compose.koinInject
+import java.nio.file.Path
+import java.time.format.DateTimeFormatter
 
 // Sealed class to represent either a commit or WIP
 sealed class CommitOrWip {
@@ -48,17 +41,18 @@ sealed class CommitOrWip {
 
 @Composable
 fun RepositoryScreen(
-    viewModel: GraphViewModel,
-    navController: NavController
+    navigator: AppNavigator,
+    path: String
 ) {
     koinInject<TitlebarViewModel>()
         .setTitle(null)
     val gitRepository: GitRepository = koinInject()
     val workspaceViewModel: WorkspaceViewModel = koinInject()
+    val projectViewModel: ProjectViewModel = koinInject()
     val scope = rememberCoroutineScope()
 
-    val screenState = navController.currentScreen as Screen.Repository
     val workspaceState by workspaceViewModel.state.collectAsState()
+    val projectState by projectViewModel.state.collectAsState()
 
     // Data states
     var localBranches by remember { mutableStateOf<List<Branch>>(emptyList()) }
@@ -66,32 +60,28 @@ fun RepositoryScreen(
     var commits by remember { mutableStateOf<List<Commit>>(emptyList()) }
     var tags by remember { mutableStateOf<List<String>>(emptyList()) }
     var selectedItem by remember { mutableStateOf<CommitOrWip?>(null) }
-    
+
     // Pagination & Search states
     var isLoadingMoreCommits by remember { mutableStateOf(false) }
     var hasMoreCommits by remember { mutableStateOf(true) }
-    
+
     var localBranchSearchQuery by remember { mutableStateOf("") }
     var remoteBranchSearchQuery by remember { mutableStateOf("") }
     var tagSearchQuery by remember { mutableStateOf("") }
-    
+
     var hasMoreRemoteBranches by remember { mutableStateOf(true) }
     var hasMoreTags by remember { mutableStateOf(true) }
-    
+
     var isLoadingLocalBranches by remember { mutableStateOf(false) }
     var isLoadingRemoteBranches by remember { mutableStateOf(false) }
     var isLoadingTags by remember { mutableStateOf(false) }
-    
+
     var isRepoReady by remember { mutableStateOf(false) }
 
-    // TODO: Load this from a persistent store
-    val recentRepositories = remember { mutableListOf<RecentRepository>() }
-
-    // Helper functions for loading data
     fun loadLocalBranches() {
         if (isLoadingLocalBranches) return
         isLoadingLocalBranches = true
-        
+
         scope.launch {
             try {
                 gitRepository.getLocalBranches(search = localBranchSearchQuery).collect { loadedBranches ->
@@ -107,22 +97,23 @@ fun RepositoryScreen(
 
     fun loadRemoteBranches(reset: Boolean = false) {
         if (isLoadingRemoteBranches || (!reset && !hasMoreRemoteBranches)) return
-        
+
         isLoadingRemoteBranches = true
         val skip = if (reset) 0 else remoteBranches.size
         val limit = 100
-        
+
         scope.launch {
             try {
-                gitRepository.getRemoteBranches(skip = skip, limit = limit, search = remoteBranchSearchQuery).collect { loadedBranches ->
-                    if (reset) {
-                        remoteBranches = loadedBranches
-                    } else {
-                        remoteBranches = remoteBranches + loadedBranches
+                gitRepository.getRemoteBranches(skip = skip, limit = limit, search = remoteBranchSearchQuery)
+                    .collect { loadedBranches ->
+                        if (reset) {
+                            remoteBranches = loadedBranches
+                        } else {
+                            remoteBranches = remoteBranches + loadedBranches
+                        }
+                        hasMoreRemoteBranches = loadedBranches.size == limit
+                        isLoadingRemoteBranches = false
                     }
-                    hasMoreRemoteBranches = loadedBranches.size == limit
-                    isLoadingRemoteBranches = false
-                }
             } catch (e: Exception) {
                 println("Error loading remote branches: ${e.message}")
                 isLoadingRemoteBranches = false
@@ -132,11 +123,11 @@ fun RepositoryScreen(
 
     fun loadTags(reset: Boolean = false) {
         if (isLoadingTags || (!reset && !hasMoreTags)) return
-        
+
         isLoadingTags = true
         val skip = if (reset) 0 else tags.size
         val limit = 100
-        
+
         scope.launch {
             try {
                 gitRepository.getTags(skip = skip, limit = limit, search = tagSearchQuery).collect { loadedTags ->
@@ -169,17 +160,11 @@ fun RepositoryScreen(
     }
 
     // Load repository data when path changes
-    LaunchedEffect(screenState.path) {
+    LaunchedEffect(projectState.project?.path) {
         val jgitRepo = gitRepository as? JGitRepository
         jgitRepo?.close()
-        jgitRepo?.open(screenState.path)
+        jgitRepo?.open(projectState.project!!.path)
         isRepoReady = true
-
-        // Add to recent repos (simple in-memory logic for now)
-        val repoName = screenState.path.fileName.toString()
-        if (recentRepositories.none { it.path == screenState.path }) {
-            recentRepositories.add(0, RecentRepository(repoName, screenState.path))
-        }
 
         workspaceViewModel.loadStatus()
 
@@ -198,7 +183,7 @@ fun RepositoryScreen(
         } catch (e: Exception) {
             println("Error loading commits: ${e.message}")
         }
-        
+
         loadLocalBranches()
         loadRemoteBranches(reset = true)
         loadTags(reset = true)
@@ -236,28 +221,6 @@ fun RepositoryScreen(
             Box(modifier = Modifier.size(32.dp).padding(4.dp), contentAlignment = Alignment.Center) {
                 Text("GS")
             }
-            
-            Spacer(modifier = Modifier.width(8.dp))
-
-            // Repository Selector
-            RepositoryDropdown(
-                recentRepositories = recentRepositories,
-                onOpen = {
-                    scope.launch {
-                        val path = FileDialogs.openDirectory("Open Git Repository")
-                        if (path != null) {
-                            navController.navigateTo(Screen.Repository(path))
-                        }
-                    }
-                },
-                onClone = {
-                    navController.navigateTo(Screen.AddRepository)
-                },
-                onSelect = { path ->
-                    navController.navigateTo(Screen.Repository(path))
-                },
-                currentRepoName = screenState.path.fileName.toString()
-            )
 
             Spacer(modifier = Modifier.weight(1f))
 
@@ -275,9 +238,9 @@ fun RepositoryScreen(
 
             // Add Repo & Settings
             // TODO: Use Jewel Icons
-            Text("+", modifier = Modifier.clickable { navController.navigateTo(Screen.AddRepository) })
+            Text("+", modifier = Modifier.clickable { navigator.navigateToAddRepository() })
             Spacer(modifier = Modifier.width(8.dp))
-            Text("⚙", modifier = Modifier.clickable { navController.navigateTo(Screen.Settings) })
+            Text("⚙", modifier = Modifier.clickable { navigator.navigateToSettings() })
         }
 
         // Content
@@ -353,7 +316,7 @@ private fun ActionLink(text: String, onClick: () -> Unit) {
     Text(
         text = text,
         modifier = Modifier.clickable(onClick = onClick),
- // Style compact
+        // Style compact
     )
 }
 
@@ -496,9 +459,11 @@ private fun RightPanel(
                 modifier = Modifier.fillMaxSize()
             )
         }
+
         is CommitOrWip.CommitItem -> {
             CommitDetailsPanel(commit = selectedItem.commit)
         }
+
         null -> {
             Box(
                 modifier = Modifier.fillMaxSize(),

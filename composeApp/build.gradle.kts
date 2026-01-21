@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
@@ -16,13 +17,14 @@ kotlin {
         commonMain.dependencies {
             implementation(compose.runtime)
             implementation(compose.foundation)
-            implementation(compose.material3) // TODO: Remove after migration to Jewel
+            implementation(compose.material3)
             implementation(compose.materialIconsExtended)
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(compose.preview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation(libs.androidx.navigation.navigationCompose)
 
             // Koin
             implementation(libs.koin.core)
@@ -36,7 +38,7 @@ kotlin {
             implementation(compose.desktop.currentOs) { exclude(group = "org.jetbrains.compose.material") }
             implementation(libs.kotlinx.coroutinesSwing)
 
-            // Jewel (IntelliJ UI) - Using latest stable version 0.15.2
+            // Jewel (IntelliJ UI)
             implementation(libs.jewel.standalone)
             implementation(libs.jewel.decorated.window)
 
@@ -60,6 +62,25 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "fr.accoradd.gitspine"
             packageVersion = "1.0.0"
+
+            windows {
+                iconFile.set(
+                    project.file("src/commonMain/composeResources/drawable/logo.ico")
+                )
+            }
+
+            macOS {
+                iconFile.set(
+                    project.file("src/commonMain/composeResources/drawable/icon.icns")
+                )
+            }
+
+            linux {
+                iconFile.set(
+                    project.file("src/commonMain/composeResources/drawable/logo-256.png")
+                )
+            }
+
         }
     }
 }

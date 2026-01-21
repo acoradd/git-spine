@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 data class TitlebarState(
-    val title: String? = null
+    val title: String? = null,
 )
 
 class TitlebarViewModel() : ViewModel() {

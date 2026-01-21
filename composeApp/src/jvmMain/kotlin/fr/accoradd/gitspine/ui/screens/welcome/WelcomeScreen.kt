@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import fr.accoradd.gitspine.core.config.AppConfig
 import fr.accoradd.gitspine.ui.viewmodel.TitlebarViewModel
+import fr.accoradd.gitspine.ui.viewmodel.WelcomeScreenViewModel
 import org.jetbrains.compose.resources.stringResource
 import gitspine.composeapp.generated.resources.Res
 import gitspine.composeapp.generated.resources.welcome_title
@@ -20,15 +21,12 @@ import org.koin.compose.koinInject
 
 @Composable
 fun WelcomeScreen(
-    onOpenRepository: () -> Unit,
-    onCloneRepository: () -> Unit,
-    enabled: Boolean = true,
-    modifier: Modifier = Modifier
+    welcomeViewModel: WelcomeScreenViewModel = koinInject(),
 ) {
     koinInject<TitlebarViewModel>()
         .setTitle(stringResource(Res.string.welcome_title, AppConfig.APP_NAME))
     Box(
-        modifier = modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -51,15 +49,13 @@ fun WelcomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 DefaultButton(
-                    onClick = onOpenRepository,
-                    enabled = enabled
+                    onClick = welcomeViewModel::openRepository
                 ) {
                     Text(stringResource(Res.string.welcome_open_repository))
                 }
 
                 OutlinedButton(
-                    onClick = onCloneRepository,
-                    enabled = enabled
+                    onClick = welcomeViewModel::goToClone
                 ) {
                     Text(stringResource(Res.string.welcome_clone_repository))
                 }
