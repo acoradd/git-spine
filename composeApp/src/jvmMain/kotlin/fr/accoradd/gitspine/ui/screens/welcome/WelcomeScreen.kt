@@ -15,8 +15,11 @@ import gitspine.composeapp.generated.resources.welcome_subtitle
 import gitspine.composeapp.generated.resources.welcome_open_repository
 import gitspine.composeapp.generated.resources.welcome_clone_repository
 import org.jetbrains.jewel.ui.component.DefaultButton
+import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.koin.compose.koinInject
 
 @Composable
@@ -27,9 +30,10 @@ fun WelcomeScreen(
         .setTitle(stringResource(Res.string.welcome_title, AppConfig.APP_NAME))
     Box(
         modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
     ) {
+        // Main content centered
         Column(
+            modifier = Modifier.align(Alignment.Center),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
@@ -60,6 +64,19 @@ fun WelcomeScreen(
                     Text(stringResource(Res.string.welcome_clone_repository))
                 }
             }
+        }
+
+        // Settings button in bottom right
+        IconButton(
+            onClick = { welcomeViewModel.openSettings() },
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(16.dp)
+        ) {
+            Icon(
+                key = AllIconsKeys.General.Settings,
+                contentDescription = "Settings"
+            )
         }
     }
 }

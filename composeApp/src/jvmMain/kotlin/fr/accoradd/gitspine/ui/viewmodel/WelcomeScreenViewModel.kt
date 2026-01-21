@@ -25,4 +25,8 @@ class WelcomeScreenViewModel(
     fun goToClone() {
         navigator.navigateToAddRepository()
     }
+
+    fun openSettings() {
+        navigator.navigateToSettings()
+    }
 }
