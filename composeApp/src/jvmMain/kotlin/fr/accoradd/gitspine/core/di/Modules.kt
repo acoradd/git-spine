@@ -8,6 +8,7 @@ import fr.accoradd.gitspine.domain.usecase.workspace.*
 import fr.accoradd.gitspine.infrastructure.git.JGitRepository
 import fr.accoradd.gitspine.infrastructure.settings.PreferencesSettings
 import fr.accoradd.gitspine.ui.viewmodel.GraphViewModel
+import fr.accoradd.gitspine.ui.viewmodel.TitlebarViewModel
 import fr.accoradd.gitspine.ui.viewmodel.WorkspaceViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -34,6 +35,7 @@ val appModule = module {
     factory { DiscardChangesUseCase(get()) }
 
     // ViewModels
+    single { TitlebarViewModel() }
     viewModel { GraphViewModel(get()) }
     viewModel { WorkspaceViewModel(get(), get(), get(), get(), get(), get(), get()) }
 }

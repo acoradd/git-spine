@@ -6,6 +6,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import fr.accoradd.gitspine.core.config.AppConfig
 import fr.accoradd.gitspine.domain.model.Branch
 import fr.accoradd.gitspine.domain.model.Commit
 import fr.accoradd.gitspine.domain.repository.GitRepository
@@ -34,6 +35,10 @@ import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Icon
 import fr.accoradd.gitspine.ui.theme.jewelColors
+import fr.accoradd.gitspine.ui.viewmodel.TitlebarViewModel
+import gitspine.composeapp.generated.resources.Res
+import gitspine.composeapp.generated.resources.welcome_title
+import org.jetbrains.compose.resources.stringResource
 
 // Sealed class to represent either a commit or WIP
 sealed class CommitOrWip {
@@ -46,6 +51,8 @@ fun RepositoryScreen(
     viewModel: GraphViewModel,
     navController: NavController
 ) {
+    koinInject<TitlebarViewModel>()
+        .setTitle(null)
     val gitRepository: GitRepository = koinInject()
     val workspaceViewModel: WorkspaceViewModel = koinInject()
     val scope = rememberCoroutineScope()

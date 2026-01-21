@@ -8,6 +8,7 @@ import androidx.compose.ui.window.application
 import fr.accoradd.gitspine.core.config.AppConfig
 import fr.accoradd.gitspine.core.di.appModule
 import fr.accoradd.gitspine.core.settings.Theme
+import fr.accoradd.gitspine.ui.components.common.AppTitleBar
 import fr.accoradd.gitspine.ui.navigation.Screen
 import fr.accoradd.gitspine.ui.navigation.rememberNavController
 import fr.accoradd.gitspine.ui.theme.GitSpineTheme
@@ -27,8 +28,9 @@ fun main() = application {
         GitSpineTheme(appTheme = currentTheme) {
             DecoratedWindow(
                 onCloseRequest = ::exitApplication,
-                title = AppConfig.APP_NAME,
+                title = AppConfig.APP_NAME
             ) {
+                AppTitleBar()
                 App(
                     navController = navController,
                     currentTheme = currentTheme,

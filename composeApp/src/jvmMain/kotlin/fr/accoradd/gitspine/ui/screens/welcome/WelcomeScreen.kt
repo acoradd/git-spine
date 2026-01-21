@@ -6,6 +6,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import fr.accoradd.gitspine.core.config.AppConfig
+import fr.accoradd.gitspine.ui.viewmodel.TitlebarViewModel
 import org.jetbrains.compose.resources.stringResource
 import gitspine.composeapp.generated.resources.Res
 import gitspine.composeapp.generated.resources.welcome_title
@@ -15,6 +16,7 @@ import gitspine.composeapp.generated.resources.welcome_clone_repository
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
+import org.koin.compose.koinInject
 
 @Composable
 fun WelcomeScreen(
@@ -23,6 +25,8 @@ fun WelcomeScreen(
     enabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
+    koinInject<TitlebarViewModel>()
+        .setTitle(stringResource(Res.string.welcome_title, AppConfig.APP_NAME))
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
