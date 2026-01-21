@@ -2,7 +2,6 @@ package fr.accoradd.gitspine.ui.components.common
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -10,24 +9,21 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
 import fr.accoradd.gitspine.domain.model.Project
 import fr.accoradd.gitspine.infrastructure.filesystem.FileDialogs
 import fr.accoradd.gitspine.ui.navigation.AppNavigator
-import fr.accoradd.gitspine.ui.navigation.Screen
 import fr.accoradd.gitspine.ui.viewmodel.ProjectViewModel
 import fr.accoradd.gitspine.ui.viewmodel.TitlebarViewModel
 import gitspine.composeapp.generated.resources.Res
 import gitspine.composeapp.generated.resources.dropdown_clone_repository
 import gitspine.composeapp.generated.resources.dropdown_open_repository
 import gitspine.composeapp.generated.resources.ic_gitspine
-import gitspine.composeapp.generated.resources.welcome_clone_repository
-import gitspine.composeapp.generated.resources.welcome_open_repository
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.ui.component.Dropdown
+import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
 import org.jetbrains.jewel.window.DecoratedWindowScope
 import org.jetbrains.jewel.window.TitleBar

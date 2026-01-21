@@ -3,7 +3,7 @@ package fr.accoradd.gitspine.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // --- IntelliJ New UI: Light Theme ---
-val IjLightBg = Color(0xFFEBECF0)
+val IjLightBg = Color(0xFFF7F8FA)
 val IjLightSurface = Color(0xFFFFFFFF)
 val IjLightBorder = Color(0xFFEBECF0)
 val IjLightText = Color(0xFF3C3F41)
