@@ -18,6 +18,8 @@ import fr.accoradd.gitspine.ui.navigation.Screen
 import fr.accoradd.gitspine.ui.viewmodel.ProjectViewModel
 import fr.accoradd.gitspine.ui.viewmodel.TitlebarViewModel
 import gitspine.composeapp.generated.resources.Res
+import gitspine.composeapp.generated.resources.dropdown_clone_repository
+import gitspine.composeapp.generated.resources.dropdown_open_repository
 import gitspine.composeapp.generated.resources.ic_gitspine
 import gitspine.composeapp.generated.resources.welcome_clone_repository
 import gitspine.composeapp.generated.resources.welcome_open_repository
@@ -83,7 +85,7 @@ fun DecoratedWindowScope.AppTitleBar(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Text(stringResource(Res.string.welcome_open_repository))
+                                Text(stringResource(Res.string.dropdown_open_repository))
                             }
                         }
                         selectableItem(
@@ -96,7 +98,7 @@ fun DecoratedWindowScope.AppTitleBar(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Text(stringResource(Res.string.welcome_clone_repository))
+                                Text(stringResource(Res.string.dropdown_clone_repository))
                             }
                         }
 

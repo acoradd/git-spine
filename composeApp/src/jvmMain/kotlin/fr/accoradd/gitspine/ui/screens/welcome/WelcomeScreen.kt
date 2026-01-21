@@ -1,25 +1,26 @@
 package fr.accoradd.gitspine.ui.screens.welcome
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fr.accoradd.gitspine.core.config.AppConfig
 import fr.accoradd.gitspine.ui.viewmodel.TitlebarViewModel
 import fr.accoradd.gitspine.ui.viewmodel.WelcomeScreenViewModel
+import gitspine.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
-import gitspine.composeapp.generated.resources.Res
-import gitspine.composeapp.generated.resources.welcome_title
-import gitspine.composeapp.generated.resources.welcome_subtitle
-import gitspine.composeapp.generated.resources.welcome_open_repository
-import gitspine.composeapp.generated.resources.welcome_clone_repository
-import org.jetbrains.jewel.ui.component.DefaultButton
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
-import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import org.jetbrains.jewel.ui.theme.colorPalette
 import org.koin.compose.koinInject
 
 @Composable
@@ -29,7 +30,8 @@ fun WelcomeScreen(
     koinInject<TitlebarViewModel>()
         .setTitle(stringResource(Res.string.welcome_title, AppConfig.APP_NAME))
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize()
+            .background(JewelTheme.globalColors.toolwindowBackground),
     ) {
         // Main content centered
         Column(
@@ -50,23 +52,23 @@ fun WelcomeScreen(
 
             // Actions
             Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(64.dp)
             ) {
-                DefaultButton(
+                WelcomeActionButton(
+                    iconKey = AllIconsKeys.Actions.MenuOpen,
+                    label = stringResource(Res.string.welcome_open_repository),
                     onClick = welcomeViewModel::openRepository
-                ) {
-                    Text(stringResource(Res.string.welcome_open_repository))
-                }
+                )
 
-                OutlinedButton(
+                WelcomeActionButton(
+                    iconKey = AllIconsKeys.Vcs.FromVCSDialog,
+                    label = stringResource(Res.string.welcome_clone_repository),
                     onClick = welcomeViewModel::goToClone
-                ) {
-                    Text(stringResource(Res.string.welcome_clone_repository))
-                }
+                )
             }
         }
 
-        // Settings button in bottom right
+        // Settings button in bottom left
         IconButton(
             onClick = { welcomeViewModel.openSettings() },
             modifier = Modifier
@@ -78,5 +80,40 @@ fun WelcomeScreen(
                 contentDescription = "Settings"
             )
         }
+    }
+}
+
+@Composable
+private fun WelcomeActionButton(
+    iconKey: IconKey,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        IconButton(
+            onClick = onClick,
+            modifier = modifier
+                .size(56.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(JewelTheme.globalColors.panelBackground)
+        ) {
+            Icon(
+                key = iconKey,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = JewelTheme.colorPalette.blue[1]
+            )
+        }
+        Text(
+            text = label,
+            textAlign = TextAlign.Center,
+            maxLines = 1
+        )
     }
 }

@@ -39,7 +39,7 @@ fun GitSpineTheme(
                 TitleBarStyle.dark()
             } else {
                 TitleBarStyle.lightWithLightHeader()
-            }
+            },
         ),
         content = content
     )

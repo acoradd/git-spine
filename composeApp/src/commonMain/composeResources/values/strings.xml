@@ -1,6 +1,8 @@
 <resources>
     <string name="welcome_title">Welcome to %1$s</string>
     <string name="welcome_subtitle">Open or clone an existing git repository</string>
-    <string name="welcome_open_repository">Open Repository</string>
-    <string name="welcome_clone_repository">Clone Repository</string>
+    <string name="welcome_open_repository">Open</string>
+    <string name="welcome_clone_repository">Clone</string>
+    <string name="dropdown_open_repository">Open Repository</string>
+    <string name="dropdown_clone_repository">Clone Repository</string>
 </resources>
