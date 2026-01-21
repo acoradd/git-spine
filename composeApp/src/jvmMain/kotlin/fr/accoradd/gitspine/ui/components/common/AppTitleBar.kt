@@ -105,7 +105,7 @@ fun DecoratedWindowScope.AppTitleBar(
                         }
 
                         projectState.recentsProject.forEach {
-//                            if (projectState.project != it) {
+                            if (projectState.project != it) {
                                 selectableItem(
                                     selected = false,
                                     onClick = {
@@ -117,7 +117,7 @@ fun DecoratedWindowScope.AppTitleBar(
                                         Text(it.path.toAbsolutePath().toString())
                                     }
                                 }
-//                            }
+                            }
                         }
                     },
                 ) {

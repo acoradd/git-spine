@@ -21,6 +21,7 @@ import fr.accoradd.gitspine.ui.navigation.Screen
 import fr.accoradd.gitspine.ui.theme.jewelColors
 import fr.accoradd.gitspine.ui.viewmodel.GraphViewModel
 import fr.accoradd.gitspine.ui.viewmodel.ProjectViewModel
+import fr.accoradd.gitspine.ui.viewmodel.RepositoryScreenViewModel
 import fr.accoradd.gitspine.ui.viewmodel.TitlebarViewModel
 import fr.accoradd.gitspine.ui.viewmodel.WorkspaceViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -44,15 +45,13 @@ fun RepositoryScreen(
     navigator: AppNavigator,
     path: String
 ) {
-    koinInject<TitlebarViewModel>()
-        .setTitle(null)
     val gitRepository: GitRepository = koinInject()
     val workspaceViewModel: WorkspaceViewModel = koinInject()
-    val projectViewModel: ProjectViewModel = koinInject()
+    val repositoryScreenViewModel: RepositoryScreenViewModel = koinInject()
     val scope = rememberCoroutineScope()
 
     val workspaceState by workspaceViewModel.state.collectAsState()
-    val projectState by projectViewModel.state.collectAsState()
+
 
     // Data states
     var localBranches by remember { mutableStateOf<List<Branch>>(emptyList()) }
@@ -146,28 +145,28 @@ fun RepositoryScreen(
         }
     }
 
-    // Auto-select WIP when changes appear
-    LaunchedEffect(workspaceState.status.hasChanges) {
-        if (workspaceState.status.hasChanges && selectedItem == null) {
-            selectedItem = CommitOrWip.Wip
-        } else if (!workspaceState.status.hasChanges && selectedItem is CommitOrWip.Wip) {
-            selectedItem = if (commits.isNotEmpty()) {
-                CommitOrWip.CommitItem(commits.first())
-            } else {
-                null
+    // Function to load more commits
+    fun loadMoreCommits() {
+        if (isLoadingMoreCommits || !hasMoreCommits) return
+
+        isLoadingMoreCommits = true
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                gitRepository.getCommits(skip = commits.size, limit = 100).collect { loadedCommits ->
+                    commits = commits + loadedCommits
+                    hasMoreCommits = loadedCommits.size == 100
+                    isLoadingMoreCommits = false
+                }
+            } catch (e: Exception) {
+                println("Error loading more commits: ${e.message}")
+                isLoadingMoreCommits = false
             }
         }
     }
 
-    // Load repository data when path changes
-    LaunchedEffect(projectState.project?.path) {
-        val jgitRepo = gitRepository as? JGitRepository
-        jgitRepo?.close()
-        jgitRepo?.open(projectState.project!!.path)
-        isRepoReady = true
-
+    LaunchedEffect(path) {
+        repositoryScreenViewModel.open(Path.of(path))
         workspaceViewModel.loadStatus()
-
         try {
             gitRepository.getCommits(skip = 0, limit = 100).collect { loadedCommits ->
                 commits = loadedCommits
@@ -189,21 +188,21 @@ fun RepositoryScreen(
         loadTags(reset = true)
     }
 
-    // Function to load more commits
-    fun loadMoreCommits() {
-        if (isLoadingMoreCommits || !hasMoreCommits) return
+    DisposableEffect(path) {
+        onDispose {
+            repositoryScreenViewModel.close(Path.of(path))
+        }
+    }
 
-        isLoadingMoreCommits = true
-        CoroutineScope(Dispatchers.Main).launch {
-            try {
-                gitRepository.getCommits(skip = commits.size, limit = 100).collect { loadedCommits ->
-                    commits = commits + loadedCommits
-                    hasMoreCommits = loadedCommits.size == 100
-                    isLoadingMoreCommits = false
-                }
-            } catch (e: Exception) {
-                println("Error loading more commits: ${e.message}")
-                isLoadingMoreCommits = false
+    // Auto-select WIP when changes appear
+    LaunchedEffect(workspaceState.status.hasChanges) {
+        if (workspaceState.status.hasChanges && selectedItem == null) {
+            selectedItem = CommitOrWip.Wip
+        } else if (!workspaceState.status.hasChanges && selectedItem is CommitOrWip.Wip) {
+            selectedItem = if (commits.isNotEmpty()) {
+                CommitOrWip.CommitItem(commits.first())
+            } else {
+                null
             }
         }
     }

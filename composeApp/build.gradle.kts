@@ -39,8 +39,11 @@ kotlin {
             implementation(libs.kotlinx.coroutinesSwing)
 
             // Jewel (IntelliJ UI)
-            implementation(libs.jewel.standalone)
-            implementation(libs.jewel.decorated.window)
+            implementation(libs.jewel)
+            implementation(libs.jewel.decorated)
+            implementation(libs.jewel.icons)
+            implementation(libs.jewel.markdown.core)
+            implementation(libs.jewel.markdown.intUiStandaloneStyling)
 
             // JGit
             implementation(libs.jgit)

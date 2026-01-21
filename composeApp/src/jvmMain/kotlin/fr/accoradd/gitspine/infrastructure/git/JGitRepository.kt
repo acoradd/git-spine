@@ -13,49 +13,20 @@ import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 import java.nio.file.Path
 import java.time.Instant
 
-class JGitRepository : GitRepository {
+class JGitRepository(
+    val session: GitSession
+) : GitRepository {
 
-    private var repo: Repository? = null
-    private val _isOpen = MutableStateFlow(false)
-
-    // File watching
-    private var fileWatcher: FileWatcher? = null
-    private var watcherScope: CoroutineScope? = null
-    private val gitIgnoreLoader = GitIgnoreLoader()
     private val _statusUpdates = MutableSharedFlow<Unit>(replay = 1)
     val statusUpdates: SharedFlow<Unit> = _statusUpdates
 
-    fun open(repoPath: Path) {
-        println("JGitRepository: Opening repository at $repoPath")
-        repo = FileRepositoryBuilder()
-            .setGitDir(repoPath.resolve(".git").toFile())
-            .build()
-        _isOpen.value = true
-
-        // Start file watcher
-        watcherScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-        startFileWatcher()
-
-        println("JGitRepository: Repository opened successfully")
-    }
-
-    fun close() {
-        println("JGitRepository: Closing repository")
-
-        // Stop file watcher
-        fileWatcher?.close()
-        watcherScope?.cancel()
-        fileWatcher = null
-        watcherScope = null
-
-        repo?.close()
-        repo = null
-        _isOpen.value = false
-        println("JGitRepository: Repository closed")
-    }
+    private val repoState
+        get(): GitRepositoryState? {
+            return session.activeRepository.value
+        }
 
     override fun getCommits(skip: Int, limit: Int): Flow<List<Commit>> = flow {
-        val repository = repo ?: run {
+        val repository = repoState?.repository ?: run {
             emit(emptyList())
             return@flow
         }
@@ -94,7 +65,7 @@ class JGitRepository : GitRepository {
     }
 
     override fun getLocalBranches(search: String?): Flow<List<Branch>> = flow {
-        val repository = repo ?: run {
+        val repository = repoState?.repository ?: run {
             emit(emptyList())
             return@flow
         }
@@ -120,7 +91,7 @@ class JGitRepository : GitRepository {
     }
 
     override fun getRemoteBranches(skip: Int, limit: Int, search: String?): Flow<List<Branch>> = flow {
-        val repository = repo ?: run {
+        val repository = repoState?.repository ?: run {
             emit(emptyList())
             return@flow
         }
@@ -146,7 +117,7 @@ class JGitRepository : GitRepository {
     }
 
     override fun getTags(skip: Int, limit: Int, search: String?): Flow<List<String>> = flow {
-        val repository = repo ?: run {
+        val repository = repoState?.repository ?: run {
             emit(emptyList())
             return@flow
         }
@@ -201,7 +172,7 @@ class JGitRepository : GitRepository {
     }
 
     override suspend fun getStatus(): WorkspaceStatus = withContext(Dispatchers.IO) {
-        val repository = repo ?: return@withContext WorkspaceStatus()
+        val repository = repoState?.repository ?: return@withContext WorkspaceStatus()
         val git = Git(repository)
 
         try {
@@ -228,27 +199,27 @@ class JGitRepository : GitRepository {
     }
 
     override suspend fun stage(path: String) = withContext(Dispatchers.IO) {
-        val repository = repo ?: return@withContext
+        val repository = repoState?.repository ?: return@withContext
         Git(repository).add().addFilepattern(path).call()
     }
 
     override suspend fun unstage(path: String) = withContext(Dispatchers.IO) {
-        val repository = repo ?: return@withContext
+        val repository = repoState?.repository ?: return@withContext
         Git(repository).reset().addPath(path).call()
     }
 
     override suspend fun stageAll() = withContext(Dispatchers.IO) {
-        val repository = repo ?: return@withContext
+        val repository = repoState?.repository ?: return@withContext
         Git(repository).add().addFilepattern(".").setUpdate(true).call()
     }
 
     override suspend fun unstageAll() = withContext(Dispatchers.IO) {
-        val repository = repo ?: return@withContext
+        val repository = repoState?.repository ?: return@withContext
         Git(repository).reset().call()
     }
 
     override suspend fun discardChanges(path: String, staged: Boolean) = withContext(Dispatchers.IO) {
-        val repository = repo ?: return@withContext
+        val repository = repoState?.repository ?: return@withContext
         val git = Git(repository)
         if (staged) {
             git.reset().addPath(path).call()
@@ -257,33 +228,7 @@ class JGitRepository : GitRepository {
     }
 
     override suspend fun commit(message: String) = withContext(Dispatchers.IO) {
-        val repository = repo ?: return@withContext
+        val repository = repoState?.repository ?: return@withContext
         Git(repository).commit().setMessage(message).call()
-    }
-
-    private fun startFileWatcher() {
-        val repository = repo ?: return
-        watcherScope?.launch {
-            try {
-                val ignoreRules = gitIgnoreLoader.loadIgnoreRules(repository)
-                val watcher = FileWatcher(this)
-                fileWatcher = watcher
-
-                watcher.watch(
-                    workspacePath = repository.workTree.toPath(),
-                    gitDirPath = repository.directory.toPath(),
-                    gitIgnoreRules = ignoreRules
-                )
-
-                watcher.events.collect { event ->
-                    when (event) {
-                        is WatcherEvent.WorkspaceChanged -> _statusUpdates.emit(Unit)
-                        is WatcherEvent.WatcherError -> println("Watcher error: ${event.message}")
-                    }
-                }
-            } catch (e: Exception) {
-                println("Error starting file watcher: ${e.message}")
-            }
-        }
     }
 }

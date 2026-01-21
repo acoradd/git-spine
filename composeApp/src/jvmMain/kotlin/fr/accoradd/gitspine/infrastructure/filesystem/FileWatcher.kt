@@ -9,15 +9,21 @@ import java.io.File
 import java.nio.file.*
 import java.nio.file.attribute.BasicFileAttributes
 import kotlin.io.path.isDirectory
-import kotlin.io.path.isRegularFile
 import kotlin.io.path.pathString
 import kotlin.io.path.relativeTo
 
-class FileWatcher(private val scope: CoroutineScope) : AutoCloseable {
+class FileWatcher(
+    private val gitIgnoreRules: IgnoreNode,
+    private val workspacePath: Path,
+    private val gitDirPath: Path,
+    private val scope: CoroutineScope =  CoroutineScope(Dispatchers.IO + SupervisorJob()),
+    private val watchService: WatchService = FileSystems.getDefault().newWatchService()
+) : AutoCloseable {
+    private var initialized = false
+
     private val _events = MutableSharedFlow<WatcherEvent>(replay = 0)
     val events: SharedFlow<WatcherEvent> = _events
 
-    private var watchService: WatchService? = null
     private var watchJob: Job? = null
     private val watchKeys = mutableMapOf<WatchKey, Path>()
 
@@ -25,16 +31,27 @@ class FileWatcher(private val scope: CoroutineScope) : AutoCloseable {
     private var pendingGitDirChange = false
     private var pendingWorkspaceChange = false
 
-    suspend fun watch(
-        workspacePath: Path,
-        gitDirPath: Path,
-        gitIgnoreRules: IgnoreNode
-    ) {
-        stop()
+    fun watch(force: Boolean = false) {
+        if (!force && initialized) {
+            return
+        }
+        scope.launch {
+            try {
+                watchInternal(force)
+            } catch (e: Exception) {
+                println("Error starting file watcher: ${e.message}")
+            }
+        }
+    }
 
-        watchService = FileSystems.getDefault().newWatchService()
+    private fun watchInternal(force: Boolean = false) {
+        if (force) {
+            close()
+        } else if (initialized) {
+            return
+        }
+        initialized = true
 
-        // Register workspace directories recursively (excluding .git except refs)
         registerRecursive(workspacePath, gitDirPath, gitIgnoreRules)
 
         // Register .git/refs directory recursively
@@ -57,19 +74,15 @@ class FileWatcher(private val scope: CoroutineScope) : AutoCloseable {
         }
     }
 
-    fun stop() {
+    override fun close() {
         debounceJob?.cancel()
         watchJob?.cancel()
         watchKeys.keys.forEach { it.cancel() }
         watchKeys.clear()
-        watchService?.close()
-        watchService = null
+        watchService.close()
+        scope.cancel()
         pendingGitDirChange = false
         pendingWorkspaceChange = false
-    }
-
-    override fun close() {
-        stop()
     }
 
     private fun registerRecursive(

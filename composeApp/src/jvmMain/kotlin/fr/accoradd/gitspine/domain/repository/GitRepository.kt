@@ -5,6 +5,8 @@ import fr.accoradd.gitspine.domain.model.Commit
 import fr.accoradd.gitspine.domain.model.GraphNode
 import fr.accoradd.gitspine.domain.model.WorkspaceStatus
 import kotlinx.coroutines.flow.Flow
+import org.eclipse.jgit.lib.Repository
+import java.nio.file.Path
 
 interface GitRepository {
     fun getCommits(skip: Int = 0, limit: Int = 1000): Flow<List<Commit>>
