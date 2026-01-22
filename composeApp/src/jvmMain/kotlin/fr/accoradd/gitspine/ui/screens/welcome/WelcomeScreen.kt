@@ -11,7 +11,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.accoradd.gitspine.core.config.AppConfig
-import fr.accoradd.gitspine.ui.viewmodel.TitlebarViewModel
 import fr.accoradd.gitspine.ui.viewmodel.WelcomeScreenViewModel
 import gitspine.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -21,15 +20,12 @@ import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import org.jetbrains.jewel.ui.theme.colorPalette
 import org.koin.compose.koinInject
 
 @Composable
 fun WelcomeScreen(
     welcomeViewModel: WelcomeScreenViewModel = koinInject(),
 ) {
-    koinInject<TitlebarViewModel>()
-        .setTitle(stringResource(Res.string.welcome_title, AppConfig.APP_NAME))
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {

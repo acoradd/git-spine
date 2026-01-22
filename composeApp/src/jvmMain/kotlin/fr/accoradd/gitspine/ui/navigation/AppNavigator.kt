@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
 class AppNavigator(
-    val titlebarViewModel: TitlebarViewModel,
     val projectViewModel: ProjectViewModel
 ) {
     private val _navigationEvents = MutableSharedFlow<Screen>(extraBufferCapacity = 1)
@@ -21,13 +20,11 @@ class AppNavigator(
     }
 
     fun navigateToRepository(projet: Project) {
-        titlebarViewModel.setTitle(null);
         projectViewModel.addAndSetProject(projet);
         navigateTo(Screen.Repository(projet.path.toString()))
     }
 
     fun navigateToWelcome() {
-        titlebarViewModel.setTitle(null);
         projectViewModel.clear();
         navigateTo(Screen.Welcome)
     }

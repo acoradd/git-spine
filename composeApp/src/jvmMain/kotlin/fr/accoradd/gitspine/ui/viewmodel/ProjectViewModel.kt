@@ -9,6 +9,8 @@ import fr.accoradd.gitspine.domain.usecase.workspace.PullUseCase
 import fr.accoradd.gitspine.domain.usecase.workspace.PushUseCase
 import fr.accoradd.gitspine.domain.usecase.workspace.StashUseCase
 import fr.accoradd.gitspine.domain.usecase.workspace.UnStashUseCase
+import fr.accoradd.gitspine.infrastructure.filesystem.FileDialogs
+import fr.accoradd.gitspine.ui.navigation.AppNavigator
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 

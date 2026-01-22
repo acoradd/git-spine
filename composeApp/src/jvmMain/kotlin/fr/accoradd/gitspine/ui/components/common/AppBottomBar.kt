@@ -8,14 +8,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import fr.accoradd.gitspine.core.config.AppConfig
 import fr.accoradd.gitspine.core.notifications.NotificationManager
 import fr.accoradd.gitspine.domain.model.Notification
+import fr.accoradd.gitspine.ui.viewmodel.ProjectViewModel
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.HorizontalProgressBar
 import org.jetbrains.jewel.ui.component.IndeterminateHorizontalProgressBar
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.window.defaultTitleBarStyle
+import org.koin.compose.koinInject
 
 @Composable
 fun AppBottomBar(
@@ -24,6 +28,12 @@ fun AppBottomBar(
     val notifications by notificationManager.notifications.collectAsState()
     val runningNotifications = notifications.filter { it.status == Notification.Status.Running }
     val currentProgress = runningNotifications.firstOrNull()
+
+    val projectViewModel: ProjectViewModel = koinInject()
+    val projectState by projectViewModel.state.collectAsState()
+
+    val textStyle = JewelTheme.defaultTextStyle.copy(fontSize = 12.sp)
+    val textColor = JewelTheme.globalColors.text.info
 
     Row(
         modifier = Modifier
@@ -39,7 +49,11 @@ fun AppBottomBar(
             horizontalArrangement = Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(AppConfig.APP_NAME.lowercase())
+            Text(
+                text = projectState.project?.path?.toAbsolutePath()?.toString() ?: AppConfig.APP_NAME,
+                style = textStyle,
+                color = textColor
+            )
         }
         Row(
             modifier = Modifier.fillMaxHeight(),
@@ -55,8 +69,8 @@ fun AppBottomBar(
                             append(notification.message)
                         }
                     },
-                    style = JewelTheme.defaultTextStyle,
-                    color = JewelTheme.globalColors.text.info
+                    style = textStyle,
+                    color = textColor
                 )
 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -80,7 +94,11 @@ fun AppBottomBar(
 
                 Spacer(modifier = Modifier.width(16.dp))
             }
-            Text(AppConfig.APP_NAME.lowercase())
+            Text(
+                text = AppConfig.APP_NAME,
+                style = textStyle,
+                color = textColor
+            )
         }
     }
 }

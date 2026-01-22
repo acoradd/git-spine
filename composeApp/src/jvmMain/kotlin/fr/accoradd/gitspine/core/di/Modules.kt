@@ -32,7 +32,7 @@ val appModule = module {
     single { GitIgnoreLoader() }
     single { GitSession(get()) }
 
-    single { AppNavigator(get(), get()) }
+    single { AppNavigator(get()) }
 
     // UseCases - Graph
     factory { GetGraphUseCase(get()) }
@@ -45,6 +45,7 @@ val appModule = module {
     factory { UnstageAllUseCase(get()) }
     factory { DiscardChangesUseCase(get()) }
     factory { CloneUseCase(get()) }
+    factory { OpenProjectUseCase(get(), get()) }
 
     factory { FetchUseCase(get()) }
     factory { PullUseCase(get()) }
@@ -54,7 +55,7 @@ val appModule = module {
     factory { CreateBranchUseCase(get()) }
 
     // ViewModels
-    single { TitlebarViewModel() }
+    single { TitlebarViewModel(get()) }
     single { ProjectViewModel(get(), get(), get(), get(), get(), get()) }
     single { AppViewModel(get(), get()) }
     viewModel { WelcomeScreenViewModel(get()) }

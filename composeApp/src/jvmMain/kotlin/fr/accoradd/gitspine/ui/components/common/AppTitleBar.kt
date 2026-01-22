@@ -4,15 +4,17 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import fr.accoradd.gitspine.domain.model.Project
-import fr.accoradd.gitspine.infrastructure.filesystem.FileDialogs
+import androidx.navigation.NavController
+import androidx.navigation.NavDestination.Companion.hasRoute
+import fr.accoradd.gitspine.core.config.AppConfig
 import fr.accoradd.gitspine.ui.navigation.AppNavigator
+import fr.accoradd.gitspine.ui.navigation.Screen
 import fr.accoradd.gitspine.ui.viewmodel.ProjectState
 import fr.accoradd.gitspine.ui.viewmodel.ProjectViewModel
 import fr.accoradd.gitspine.ui.viewmodel.TitlebarViewModel
@@ -20,15 +22,14 @@ import gitspine.composeapp.generated.resources.Res
 import gitspine.composeapp.generated.resources.dropdown_clone_repository
 import gitspine.composeapp.generated.resources.dropdown_open_repository
 import gitspine.composeapp.generated.resources.ic_gitspine
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
+import gitspine.composeapp.generated.resources.welcome_title
+import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.ui.component.Dropdown
 import org.jetbrains.jewel.ui.component.IconActionButton
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.Tooltip
 import org.jetbrains.jewel.ui.component.separator
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.window.DecoratedWindowScope
@@ -39,15 +40,30 @@ import org.koin.compose.koinInject
 @OptIn(ExperimentalJewelApi::class)
 @Composable
 fun DecoratedWindowScope.AppTitleBar(
-    navigator: AppNavigator
+    navigator: AppNavigator,
+    navController: NavController
 ) {
     val viewModel: TitlebarViewModel = koinInject()
     val projectViewModel: ProjectViewModel = koinInject()
 
     val state by viewModel.state.collectAsState()
     val projectState by projectViewModel.state.collectAsState()
+    val welcomeTitle = stringResource(Res.string.welcome_title, AppConfig.APP_NAME)
 
-    val scope = rememberCoroutineScope()
+    DisposableEffect(navController) {
+        val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
+            when {
+                destination.hasRoute<Screen.Welcome>() -> viewModel.setTitle(welcomeTitle)
+                else -> viewModel.setTitle(null)
+            }
+        }
+        navController.addOnDestinationChangedListener(listener)
+
+        onDispose {
+            navController.removeOnDestinationChangedListener(listener)
+        }
+    }
+
 
     TitleBar(Modifier.newFullscreenControls()) {
         Row(
@@ -66,7 +82,7 @@ fun DecoratedWindowScope.AppTitleBar(
                 Spacer(modifier = Modifier.width(16.dp))
             }
             if (projectState.project != null) {
-                AppTitleBarProject(scope, projectViewModel, projectState, navigator)
+                AppTitleBarProject(viewModel, projectViewModel, projectState, navigator)
             }
         }
         Row(
@@ -83,7 +99,7 @@ fun DecoratedWindowScope.AppTitleBar(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AppTitleBarProject(
-    scope: CoroutineScope,
+    viewModel: TitlebarViewModel,
     projectViewModel: ProjectViewModel,
     projectState: ProjectState,
     navigator: AppNavigator
@@ -94,16 +110,7 @@ private fun AppTitleBarProject(
         menuContent = {
             selectableItem(
                 selected = false,
-                onClick = {
-                    scope.launch {
-                        val path = FileDialogs.openDirectory("Open Git Repository")
-                        if (path != null) {
-                            var newProject = Project(path = path)
-                            newProject = projectViewModel.addAndSetProject(newProject).project!!
-                            navigator.navigateToRepository(newProject)
-                        }
-                    }
-                }
+                onClick = { viewModel.openProject() }
             ) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),

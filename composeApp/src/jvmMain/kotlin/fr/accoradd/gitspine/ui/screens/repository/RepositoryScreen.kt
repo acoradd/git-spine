@@ -205,7 +205,7 @@ fun RepositoryScreen(
     ) {
         // Content
         ThreeColumnResizablePanes(
-            modifier = Modifier.fillMaxSize().padding(4.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 28.dp),
             initialLeftWidth = 0.2f,
             initialRightWidth = 0.25f,
             leftContent = {

@@ -12,10 +12,10 @@ import fr.accoradd.gitspine.core.config.AppConfig
 import fr.accoradd.gitspine.core.di.appModule
 import fr.accoradd.gitspine.core.notifications.NotificationManager
 import fr.accoradd.gitspine.core.settings.Theme
+import fr.accoradd.gitspine.ui.components.common.AppBottomBar
 import fr.accoradd.gitspine.ui.components.common.AppTitleBar
 import fr.accoradd.gitspine.ui.components.dialogs.CloneRepositoryDialog
 import fr.accoradd.gitspine.ui.components.notifications.NotificationsContainer
-import fr.accoradd.gitspine.ui.components.common.AppBottomBar
 import fr.accoradd.gitspine.ui.navigation.AppNavigator
 import fr.accoradd.gitspine.ui.theme.AppTheme
 import fr.accoradd.gitspine.ui.viewmodel.AppViewModel
@@ -45,7 +45,7 @@ fun main() = application {
                 onCloseRequest = ::exitApplication,
                 title = AppConfig.APP_NAME
             ) {
-                AppTitleBar(navigator = navigator)
+                AppTitleBar(navigator = navigator, navController = navController)
                 Column(modifier = Modifier.fillMaxSize()) {
                     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                         App(
