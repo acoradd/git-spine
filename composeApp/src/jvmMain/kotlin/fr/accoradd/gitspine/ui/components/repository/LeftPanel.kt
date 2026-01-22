@@ -10,29 +10,37 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Modifier.Companion
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.dp
+import fr.accoradd.gitspine.domain.model.Branch
 import fr.accoradd.gitspine.ui.components.common.SearchField
 import fr.accoradd.gitspine.ui.components.common.SectionHeader
-import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.VerticalScrollbar
-import org.jetbrains.jewel.ui.component.Link
 import fr.accoradd.gitspine.ui.theme.jewelColors
+import jdk.internal.platform.Container.metrics
+import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.Orientation
+import org.jetbrains.jewel.ui.component.*
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import java.io.File.separator
 
 @Composable
 fun RepositoryLeftPanel(
-    localBranches: List<String> = emptyList(),
-    remoteBranches: Map<String, List<String>> = emptyMap(),
+    localBranches: List<Branch>,
+    remoteBranches: List<Branch>,
     tags: List<String> = emptyList(),
-    selectedBranch: String? = null,
 
     // Search states
-    localBranchSearchQuery: String = "",
     remoteBranchSearchQuery: String = "",
     tagSearchQuery: String = "",
 
@@ -57,6 +65,15 @@ fun RepositoryLeftPanel(
 
     modifier: Modifier = Modifier
 ) {
+
+    val localBranchesNames = localBranches.map { it.name }
+    val remoteBranchesMap = remoteBranches
+        .groupBy { it.name.substringBefore("/") }
+        .mapValues { (_, branchesList) ->
+            branchesList.map { it.name.substringAfter("/") }
+        }
+    val selectedBranch = localBranches.find { it.isHead }?.name ?: remoteBranches.find { it.isHead }?.name
+
     // Expansion states
     var localExpanded by remember { mutableStateOf(true) }
     var remoteExpanded by remember { mutableStateOf(false) }
@@ -83,11 +100,64 @@ fun RepositoryLeftPanel(
         }
     }
 
-    // Jewel gère le fond par défaut, pas besoin de Surface
     Column(
         modifier = modifier.fillMaxSize()
     ) {
-        // Section: Branches locales
+        val searchState = rememberTextFieldState("")
+
+        BasicTextField(
+            value = searchState.text.toString(),
+            onValueChange = { searchState.setTextAndPlaceCursorAtEnd(it) },
+            textStyle = JewelTheme.defaultTextStyle.copy(
+                color = JewelTheme.globalColors.text.normal
+            ),
+            cursorBrush = SolidColor(JewelTheme.globalColors.text.normal),
+            modifier = Modifier.fillMaxWidth().padding(8.dp),
+            decorationBox = { innerTextField ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Icône AVANT
+                    Icon(
+                        key = AllIconsKeys.Actions.Find,
+                        contentDescription = "Search",
+                        modifier = Modifier,
+                        tint = JewelTheme.globalColors.text.info
+                    )
+
+                    Spacer(Modifier.width(8.dp))
+
+                    // Le champ de saisie lui-même
+                    Box(Modifier.weight(1f)) {
+                        if (searchState.text.isEmpty()) {
+                            Text("Rechercher...", color = Color.Gray)
+                        }
+                        innerTextField()
+                    }
+
+                    if (searchState.text.isNotEmpty()) {
+                        IconActionButton(
+                            key = AllIconsKeys.Actions.Close,
+                            contentDescription = "Clear",
+                            onClick = { searchState.clearText() },
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            })
+
+        Divider(
+            orientation = Orientation.Horizontal,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            color = JewelTheme.globalColors.borders.normal,
+            thickness = 1.dp
+        )
+
+        LaunchedEffect(searchState.text) {
+            onLocalBranchSearch(searchState.text.toString())
+        }
+
         val localBranchesCount = if (localBranches.size >= 100) "99+" else localBranches.size.toString()
 
         SectionHeader(
@@ -103,20 +173,13 @@ fun RepositoryLeftPanel(
 
         if (localExpanded) {
             Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                SearchField(
-                    value = localBranchSearchQuery,
-                    onValueChange = onLocalBranchSearch,
-                    onDebouncedValueChange = onLocalBranchSearch,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    placeholder = "Chercher..."
-                )
 
                 LazyScrollableContent {
                     if (localBranches.isEmpty()) {
                         item { EmptyState("Aucune branche locale") }
                     } else {
                         branchTreeView(
-                            branches = localBranches,
+                            branches = localBranchesNames,
                             selectedBranch = selectedBranch,
                             onBranchClick = onBranchClick,
                             expandedFolders = expandedFolders,
@@ -129,7 +192,7 @@ fun RepositoryLeftPanel(
         }
 
         // Section: Branches distantes
-        val remoteBranchesCount = remoteBranches.values.sumOf { it.size }
+        val remoteBranchesCount = remoteBranchesMap.values.sumOf { it.size }
         val remoteBranchesDisplay = if (remoteBranchesCount >= 100) "99+" else remoteBranchesCount.toString()
 
         SectionHeader(
@@ -157,7 +220,7 @@ fun RepositoryLeftPanel(
                     if (remoteBranches.isEmpty()) {
                         item { EmptyState("Aucune branche distante") }
                     } else {
-                        remoteBranches.forEach { (remote, branches) ->
+                        remoteBranchesMap.forEach { (remote, branches) ->
                             item(key = "remote-header-$remote") {
                                 RemoteHeader(remoteName = remote, branchesCount = branches.size)
                             }

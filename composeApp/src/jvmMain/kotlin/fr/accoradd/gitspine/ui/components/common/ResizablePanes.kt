@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import java.awt.Cursor
 import fr.accoradd.gitspine.ui.theme.jewelColors
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 
 @Composable
 fun ThreeColumnResizablePanes(
@@ -142,7 +143,7 @@ private fun Pane(
         modifier = Modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(cornerRadius))
-            .background(jewelColors.grey(2)), // Couleur de surface légère
+            .background(JewelTheme.globalColors.panelBackground), // Couleur de surface légère
         content = { content() }
     )
 }

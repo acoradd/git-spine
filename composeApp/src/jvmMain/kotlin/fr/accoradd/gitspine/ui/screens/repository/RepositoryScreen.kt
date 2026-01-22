@@ -203,17 +203,15 @@ fun RepositoryScreen(
         modifier = Modifier.fillMaxSize()
             .background(JewelTheme.defaultTitleBarStyle.colors.background)
     ) {
-        // Content
         ThreeColumnResizablePanes(
             modifier = Modifier.fillMaxSize().padding(horizontal = 28.dp),
             initialLeftWidth = 0.2f,
             initialRightWidth = 0.25f,
             leftContent = {
-                LeftPanel(
+                RepositoryLeftPanel(
                     localBranches = localBranches,
                     remoteBranches = remoteBranches,
                     tags = tags,
-                    localBranchSearchQuery = localBranchSearchQuery,
                     remoteBranchSearchQuery = remoteBranchSearchQuery,
                     tagSearchQuery = tagSearchQuery,
                     hasMoreRemoteBranches = hasMoreRemoteBranches,
@@ -265,58 +263,6 @@ fun RepositoryScreen(
             }
         )
     }
-}
-
-@Composable
-private fun LeftPanel(
-    localBranches: List<Branch>,
-    remoteBranches: List<Branch>,
-    tags: List<String>,
-    localBranchSearchQuery: String,
-    remoteBranchSearchQuery: String,
-    tagSearchQuery: String,
-    hasMoreRemoteBranches: Boolean,
-    hasMoreTags: Boolean,
-    onBranchClick: (String) -> Unit,
-    onTagClick: (String) -> Unit,
-    onLoadLocalBranches: () -> Unit,
-    onLocalBranchSearch: (String) -> Unit,
-    onLoadRemoteBranches: () -> Unit,
-    onLoadMoreRemoteBranches: () -> Unit,
-    onRemoteBranchSearch: (String) -> Unit,
-    onLoadTags: () -> Unit,
-    onLoadMoreTags: () -> Unit,
-    onTagSearch: (String) -> Unit
-) {
-    val localBranchesNames = localBranches.map { it.name }
-    val remoteBranchesMap = remoteBranches
-        .groupBy { it.name.substringBefore("/") }
-        .mapValues { (_, branchesList) ->
-            branchesList.map { it.name.substringAfter("/") }
-        }
-    val selectedBranch = localBranches.find { it.isHead }?.name ?: remoteBranches.find { it.isHead }?.name
-
-    RepositoryLeftPanel(
-        localBranches = localBranchesNames,
-        remoteBranches = remoteBranchesMap,
-        tags = tags,
-        selectedBranch = selectedBranch,
-        localBranchSearchQuery = localBranchSearchQuery,
-        remoteBranchSearchQuery = remoteBranchSearchQuery,
-        tagSearchQuery = tagSearchQuery,
-        hasMoreRemoteBranches = hasMoreRemoteBranches,
-        hasMoreTags = hasMoreTags,
-        onBranchClick = onBranchClick,
-        onTagClick = onTagClick,
-        onLoadLocalBranches = onLoadLocalBranches,
-        onLocalBranchSearch = onLocalBranchSearch,
-        onLoadRemoteBranches = onLoadRemoteBranches,
-        onLoadMoreRemoteBranches = onLoadMoreRemoteBranches,
-        onRemoteBranchSearch = onRemoteBranchSearch,
-        onLoadTags = onLoadTags,
-        onLoadMoreTags = onLoadMoreTags,
-        onTagSearch = onTagSearch
-    )
 }
 
 @Composable
