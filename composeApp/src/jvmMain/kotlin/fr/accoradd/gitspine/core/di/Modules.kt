@@ -10,6 +10,7 @@ import fr.accoradd.gitspine.infrastructure.git.GitSession
 import fr.accoradd.gitspine.infrastructure.git.JGitRepository
 import fr.accoradd.gitspine.infrastructure.settings.PreferencesSettings
 import fr.accoradd.gitspine.ui.navigation.AppNavigator
+import fr.accoradd.gitspine.ui.viewmodel.AppViewModel
 import fr.accoradd.gitspine.ui.viewmodel.GraphViewModel
 import fr.accoradd.gitspine.ui.viewmodel.ProjectViewModel
 import fr.accoradd.gitspine.ui.viewmodel.RepositoryScreenViewModel
@@ -47,7 +48,8 @@ val appModule = module {
 
     // ViewModels
     single { TitlebarViewModel() }
-    single { ProjectViewModel(get()) }
+    single { ProjectViewModel() }
+    single { AppViewModel(get(), get()) }
     viewModel { WelcomeScreenViewModel(get()) }
     viewModel { RepositoryScreenViewModel(get()) }
     viewModel { GraphViewModel(get()) }

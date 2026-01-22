@@ -19,6 +19,7 @@ import fr.accoradd.gitspine.ui.components.dialogs.CloneRepositoryDialog
 import fr.accoradd.gitspine.ui.components.notifications.NotificationsContainer
 import fr.accoradd.gitspine.ui.navigation.AppNavigator
 import fr.accoradd.gitspine.ui.theme.GitSpineTheme
+import fr.accoradd.gitspine.ui.viewmodel.AppViewModel
 import fr.accoradd.gitspine.ui.viewmodel.ProjectViewModel
 import org.jetbrains.jewel.window.DecoratedWindow
 import org.koin.compose.KoinApplication
@@ -32,7 +33,7 @@ fun main() = application {
         var currentTheme by remember { mutableStateOf(Theme.SYSTEM) }
         var showCloneDialog by remember { mutableStateOf(false) }
         val navigator: AppNavigator = koinInject()
-        val projectViewModel: ProjectViewModel = koinInject()
+        val appViewModel: AppViewModel = koinInject()
         val notificationManager: NotificationManager = koinInject()
 
         LaunchedEffect(Unit) {
@@ -63,7 +64,7 @@ fun main() = application {
                         onDismiss = { showCloneDialog = false },
                         onClone = { path, url ->
                             showCloneDialog = false
-                            projectViewModel.cloneRepository(path, url)
+                            appViewModel.cloneRepository(path, url)
                         }
                     )
                 }

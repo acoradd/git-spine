@@ -6,20 +6,22 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import fr.accoradd.gitspine.domain.model.Notification
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.CircularProgressIndicator
+import org.jetbrains.jewel.ui.component.HorizontalProgressBar
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
+import org.jetbrains.jewel.ui.component.IndeterminateHorizontalProgressBar
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 
@@ -35,17 +37,23 @@ fun NotificationToast(
     // Auto-dismiss sur succès après 3 secondes
     LaunchedEffect(notification.status) {
         if (notification.status == Notification.Status.Success) {
-            kotlinx.coroutines.delay(3000)
+            delay(3000)
             visible = false
-            kotlinx.coroutines.delay(300) // Animation duration
+            delay(300)
             onDismiss()
         }
     }
 
-    val backgroundColor = when (notification.status) {
-        Notification.Status.Error -> Color(0xFFFFCDD2)
-        Notification.Status.Success -> Color(0xFFC8E6C9)
-        Notification.Status.Running -> JewelTheme.globalColors.panelBackground
+    val iconKey = when (notification.status) {
+        Notification.Status.Success -> AllIconsKeys.General.InspectionsOK
+        Notification.Status.Error -> AllIconsKeys.General.Error
+        Notification.Status.Running -> AllIconsKeys.General.Information
+    }
+
+    val iconTint = when (notification.status) {
+        Notification.Status.Success -> JewelTheme.globalColors.text.info
+        Notification.Status.Error -> JewelTheme.globalColors.text.error
+        Notification.Status.Running -> JewelTheme.globalColors.text.normal
     }
 
     AnimatedVisibility(
@@ -55,75 +63,78 @@ fun NotificationToast(
     ) {
         Column(
             modifier = modifier
-                .width(350.dp)
-                .padding(8.dp)
-                .shadow(6.dp, RoundedCornerShape(8.dp))
-                .background(backgroundColor, RoundedCornerShape(8.dp))
+                .width(320.dp)
+                .padding(4.dp)
+                .shadow(4.dp, RoundedCornerShape(6.dp))
+                .background(JewelTheme.globalColors.panelBackground, RoundedCornerShape(6.dp))
+                .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(6.dp))
                 .padding(12.dp)
         ) {
-            // Header: Titre + bouton fermer
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
                 ) {
-                    // Icon de statut
-                    when (notification.status) {
-                        Notification.Status.Success -> Icon(
-                            key = AllIconsKeys.General.InspectionsOK,
-                            contentDescription = null,
-                            tint = Color(0xFF2E7D32),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Notification.Status.Error -> Icon(
-                            key = AllIconsKeys.General.Error,
-                            contentDescription = null,
-                            tint = Color(0xFFC62828),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        else -> {}
-                    }
-
-                    if (notification.status != Notification.Status.Running) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-
-                    Text(text = notification.title)
+                    Icon(
+                        key = iconKey,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = notification.title,
+                        style = JewelTheme.defaultTextStyle
+                    )
                 }
 
                 IconButton(
                     onClick = {
                         visible = false
                         scope.launch {
-                            kotlinx.coroutines.delay(300)
+                            delay(300)
                             onDismiss()
                         }
-                    }
+                    },
+                    modifier = Modifier.size(20.dp)
                 ) {
                     Icon(
                         key = AllIconsKeys.Actions.Close,
                         contentDescription = "Fermer",
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(12.dp),
+                        tint = JewelTheme.globalColors.text.disabled
                     )
                 }
             }
 
-            // Message
             if (notification.message.isNotBlank()) {
                 Text(
                     text = notification.message,
-                    modifier = Modifier.padding(top = 8.dp)
+                    modifier = Modifier.padding(top = 6.dp, start = 24.dp),
+                    style = JewelTheme.defaultTextStyle,
+                    color = JewelTheme.globalColors.text.info
                 )
             }
 
-            // Progress bar
             if (notification.status == Notification.Status.Running) {
-                Spacer(modifier = Modifier.height(12.dp))
-                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(10.dp))
+                when (val progress = notification.progress) {
+                    is Notification.Progress.Determinate -> {
+                        HorizontalProgressBar(
+                            progress = progress.current.toFloat() / progress.total.toFloat(),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    is Notification.Progress.Indeterminate -> {
+                        IndeterminateHorizontalProgressBar(
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
             }
         }
     }

@@ -1,23 +1,15 @@
 package fr.accoradd.gitspine.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import fr.accoradd.gitspine.core.notifications.NotificationManager
 import fr.accoradd.gitspine.domain.model.Project
-import fr.accoradd.gitspine.domain.usecase.workspace.CloneUseCase
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
-import org.koin.compose.koinInject
-import java.nio.file.Path
 
 data class ProjectState(
     val project: Project? = null,
     val recentsProject: List<Project> = emptyList(),
 )
 
-class ProjectViewModel(
-    private val cloneUseCase: CloneUseCase
-) : ViewModel() {
+class ProjectViewModel() : ViewModel() {
 
     private val _state = MutableStateFlow(ProjectState())
     val state: StateFlow<ProjectState> = _state.asStateFlow()
@@ -36,11 +28,5 @@ class ProjectViewModel(
 
     fun clear() {
         _state.update { it.copy(project = null) }
-    }
-
-    fun cloneRepository(path: Path, url: String) {
-        viewModelScope.launch {
-            cloneUseCase.invoke(path, url)
-        }
     }
 }
