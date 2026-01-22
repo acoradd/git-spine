@@ -1,6 +1,7 @@
 package fr.accoradd.gitspine.core.notifications
 
 import fr.accoradd.gitspine.domain.model.Notification
+import fr.accoradd.gitspine.domain.model.Notification.Status
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,12 +34,14 @@ class NotificationManager {
     fun createNotification(
         title: String,
         message: String = "",
-        progress: Notification.Progress = Notification.Progress.Indeterminate
+        progress: Notification.Progress = Notification.Progress.Indeterminate,
+        status: Status = Status.Running
     ): String {
         val notification = Notification(
             title = title,
             message = message,
-            progress = progress
+            progress = progress,
+            status = status
         )
         addNotification(notification)
         return notification.id

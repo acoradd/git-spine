@@ -1,5 +1,6 @@
 package fr.accoradd.gitspine.infrastructure.git
 
+import fr.accoradd.gitspine.core.notifications.NotificationManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.eclipse.jgit.api.Git
@@ -18,7 +19,7 @@ object GitCloner {
     suspend fun clone(
         url: String,
         destinationPath: String,
-        onProgress: ((Progress) -> Unit)? = null
+        notificationManager: NotificationManager
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
             val directory = File(destinationPath)
@@ -33,49 +34,20 @@ object GitCloner {
             // Créer le répertoire parent si nécessaire
             directory.parentFile?.mkdirs()
 
-            onProgress?.invoke(Progress("Démarrage du clonage..."))
-
-            var currentTaskName = ""
-            var currentTaskTotal = 0
-            var currentTaskCompleted = 0
-
             // Cloner le dépôt
             val cloneCommand = Git.cloneRepository()
                 .setURI(url)
                 .setDirectory(directory)
-                .setProgressMonitor(object : org.eclipse.jgit.lib.ProgressMonitor {
-                    override fun start(totalTasks: Int) {
-                        onProgress?.invoke(Progress("Démarrage du clonage...", 0, totalTasks))
-                    }
 
-                    override fun beginTask(title: String?, totalWork: Int) {
-                        currentTaskName = title ?: "Clonage en cours..."
-                        currentTaskTotal = totalWork
-                        currentTaskCompleted = 0
-                        onProgress?.invoke(Progress(currentTaskName, 0, totalWork))
-                    }
+            val monitor = NotificationProgressMonitor(
+                notificationManager = notificationManager,
+                cmd = cloneCommand,
+                title = "Clone",
+                startMessage = "Clonage du dépôt $url vers $destinationPath",
+                successMessage = "Dépôt cloné avec succès"
+            )
 
-                    override fun update(completed: Int) {
-                        currentTaskCompleted += completed
-                        onProgress?.invoke(
-                            Progress(
-                                currentTaskName,
-                                currentTaskCompleted,
-                                currentTaskTotal
-                            )
-                        )
-                    }
-
-                    override fun endTask() {
-                        onProgress?.invoke(Progress(currentTaskName, currentTaskTotal, currentTaskTotal))
-                    }
-
-                    override fun isCancelled(): Boolean = false
-
-                    override fun showDuration(enabled: Boolean) {
-                        // Show duration feature
-                    }
-                })
+            cloneCommand.setProgressMonitor(monitor)
 
             // Configure SSH transport pour les URLs git@...
             if (url.startsWith("git@") || url.startsWith("ssh://")) {
@@ -86,9 +58,8 @@ object GitCloner {
                 }
             }
 
-            cloneCommand.call()
-                .use { git ->
-                    onProgress?.invoke(Progress("Clonage terminé", 1, 1))
+            monitor.call()
+                .use { _ ->
                     return@withContext Result.success(destinationPath)
                 }
         } catch (e: Exception) {

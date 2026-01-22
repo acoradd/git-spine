@@ -3,37 +3,40 @@ package fr.accoradd.gitspine.ui.theme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import org.jetbrains.jewel.foundation.GlobalColors
+import org.jetbrains.jewel.foundation.OutlineColors
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.*
 import org.jetbrains.jewel.intui.window.decoratedWindow
 import org.jetbrains.jewel.intui.window.styling.dark
 import org.jetbrains.jewel.intui.window.styling.lightWithLightHeader
 import org.jetbrains.jewel.ui.ComponentStyling
+import org.jetbrains.jewel.window.styling.TitleBarColors
 import org.jetbrains.jewel.window.styling.TitleBarStyle
 import fr.accoradd.gitspine.core.settings.Theme as AppTheme
 
 @Composable
-fun GitSpineTheme(
+fun AppTheme(
     appTheme: AppTheme = AppTheme.SYSTEM,
     content: @Composable () -> Unit
 ) {
     val textStyle = JewelTheme.createDefaultTextStyle()
     val editorStyle = JewelTheme.createEditorTextStyle()
+    val isSystemDark = isSystemInDarkTheme()
 
     val isDark = when (appTheme) {
         AppTheme.DARK -> true
         AppTheme.LIGHT -> false
-        AppTheme.SYSTEM -> isSystemInDarkTheme()
+        AppTheme.SYSTEM -> isSystemDark
     }
 
     // Couleurs personnalisées
-    val defaultColors = if (isDark) GlobalColors.dark() else GlobalColors.light()
-    val customColors = GlobalColors(
-        borders = defaultColors.borders,
-        outlines = defaultColors.outlines,
-        text = defaultColors.text,
-        panelBackground = if (isDark) IjDarkBg else IjLightBg,
-        toolwindowBackground = if (isDark) IjDarkSurface else IjLightSurface
+    val themeColors = if (isDark) AppDarkThemeColors else AppLightThemeColors
+    val customColors = if (isDark) GlobalColors.dark(
+        panelBackground = themeColors.panel.bg,
+        toolwindowBackground = themeColors.toolwindow.bg
+    ) else GlobalColors.light(
+        panelBackground = themeColors.panel.bg,
+        toolwindowBackground = themeColors.toolwindow.bg
     )
 
     val theme = if (isDark) {
@@ -54,9 +57,17 @@ fun GitSpineTheme(
         theme = theme,
         styling = ComponentStyling.default().decoratedWindow(
             titleBarStyle = if (isDark) {
-                TitleBarStyle.dark()
+                TitleBarStyle.dark(
+                    colors = TitleBarColors.dark(
+                        backgroundColor = themeColors.bar.bg
+                    )
+                )
             } else {
-                TitleBarStyle.lightWithLightHeader()
+                TitleBarStyle.lightWithLightHeader(
+                    colors = TitleBarColors.lightWithLightHeader(
+                        backgroundColor = themeColors.bar.bg
+                    )
+                )
             },
         ),
         content = content

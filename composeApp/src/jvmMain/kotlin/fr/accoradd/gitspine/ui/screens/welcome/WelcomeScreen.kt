@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import fr.accoradd.gitspine.core.config.AppConfig
 import fr.accoradd.gitspine.ui.viewmodel.TitlebarViewModel
 import fr.accoradd.gitspine.ui.viewmodel.WelcomeScreenViewModel
@@ -30,25 +31,25 @@ fun WelcomeScreen(
     koinInject<TitlebarViewModel>()
         .setTitle(stringResource(Res.string.welcome_title, AppConfig.APP_NAME))
     Box(
-        modifier = Modifier.fillMaxSize()
-            .background(JewelTheme.globalColors.toolwindowBackground),
+        modifier = Modifier.fillMaxSize(),
     ) {
         // Main content centered
         Column(
-            modifier = Modifier.align(Alignment.Center),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            modifier = Modifier.align(Alignment.TopCenter),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Spacer(modifier = Modifier.height(128.dp))
             // Title
             Text(
                 text = stringResource(Res.string.welcome_title, AppConfig.APP_NAME),
+                style = JewelTheme.defaultTextStyle.copy(fontSize = 32.sp)
             )
 
             Text(
                 text = stringResource(Res.string.welcome_subtitle)
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(64.dp))
 
             // Actions
             Row(
@@ -101,13 +102,13 @@ private fun WelcomeActionButton(
             modifier = modifier
                 .size(56.dp)
                 .clip(RoundedCornerShape(4.dp))
-                .background(JewelTheme.globalColors.panelBackground)
+                .background(JewelTheme.globalColors.toolwindowBackground)
         ) {
             Icon(
                 key = iconKey,
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
-                tint = JewelTheme.colorPalette.blue[1]
+                tint = JewelTheme.globalColors.outlines.focused
             )
         }
         Text(

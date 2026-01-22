@@ -16,31 +16,12 @@ class CloneUseCase(private val notificationManager: NotificationManager) {
         val result = GitCloner.clone(
             url = url,
             destinationPath = dest.toString(),
-            onProgress = { progress ->
-                val notifProgress = if (progress.total > 0) {
-                    Notification.Progress.Determinate(progress.completed, progress.total)
-                } else {
-                    Notification.Progress.Indeterminate
-                }
-                notificationManager.updateProgress(
-                    id = notificationId,
-                    message = progress.message,
-                    progress = notifProgress
-                )
-            }
+            notificationManager
         )
 
         if (result.isSuccess) {
-            notificationManager.completeNotification(
-                id = notificationId,
-                message = "Dépôt cloné avec succès"
-            )
             return dest
         } else {
-            notificationManager.failNotification(
-                id = notificationId,
-                errorMessage = result.exceptionOrNull()?.message ?: "Erreur inconnue"
-            )
             return null
         }
     }

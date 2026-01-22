@@ -28,7 +28,7 @@ val appModule = module {
     single<Settings> { PreferencesSettings() }
 
     // Repositories
-    single<GitRepository> { JGitRepository(get()) }
+    single<GitRepository> { JGitRepository(get(), get()) }
     single { GitIgnoreLoader() }
     single { GitSession(get()) }
 
@@ -46,9 +46,16 @@ val appModule = module {
     factory { DiscardChangesUseCase(get()) }
     factory { CloneUseCase(get()) }
 
+    factory { FetchUseCase(get()) }
+    factory { PullUseCase(get()) }
+    factory { PushUseCase(get()) }
+    factory { StashUseCase(get()) }
+    factory { UnStashUseCase(get()) }
+    factory { CreateBranchUseCase(get()) }
+
     // ViewModels
     single { TitlebarViewModel() }
-    single { ProjectViewModel() }
+    single { ProjectViewModel(get(), get(), get(), get(), get(), get()) }
     single { AppViewModel(get(), get()) }
     viewModel { WelcomeScreenViewModel(get()) }
     viewModel { RepositoryScreenViewModel(get()) }

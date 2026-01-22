@@ -217,18 +217,6 @@ fun RepositoryScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Git Actions
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                ActionLink("Fetch") { /* TODO */ }
-                ActionLink("Pull") { /* TODO */ }
-                ActionLink("Push") { /* TODO */ }
-                ActionLink("Stash") { /* TODO */ }
-                ActionLink("Unstash") { /* TODO */ }
-                ActionLink("New Branch") { /* TODO */ }
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
             // Add Repo & Settings
             // TODO: Use Jewel Icons
             Text("+", modifier = Modifier.clickable { navigator.openCloneDialog() })

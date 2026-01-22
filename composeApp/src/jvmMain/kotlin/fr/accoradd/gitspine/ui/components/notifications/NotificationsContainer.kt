@@ -8,6 +8,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import fr.accoradd.gitspine.core.notifications.NotificationManager
+import fr.accoradd.gitspine.domain.model.Notification
 
 @Composable
 fun NotificationsContainer(
@@ -15,6 +16,10 @@ fun NotificationsContainer(
     modifier: Modifier = Modifier
 ) {
     val notifications by notificationManager.notifications.collectAsState()
+    // Only show completed notifications (success or error) as toasts
+    val completedNotifications = notifications.filter {
+        it.status == Notification.Status.Success || it.status == Notification.Status.Error
+    }
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -27,7 +32,7 @@ fun NotificationsContainer(
             verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Bottom),
             horizontalAlignment = Alignment.End
         ) {
-            notifications.forEach { notification ->
+            completedNotifications.forEach { notification ->
                 NotificationToast(
                     notification = notification,
                     onDismiss = {

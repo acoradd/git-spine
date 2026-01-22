@@ -1,20 +1,17 @@
 package fr.accoradd.gitspine.infrastructure.git
 
+import fr.accoradd.gitspine.core.notifications.NotificationManager
 import fr.accoradd.gitspine.domain.model.*
 import fr.accoradd.gitspine.domain.repository.GitRepository
-import fr.accoradd.gitspine.infrastructure.filesystem.FileWatcher
-import fr.accoradd.gitspine.infrastructure.filesystem.GitIgnoreLoader
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import org.eclipse.jgit.api.Git
-import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.revwalk.RevWalk
-import org.eclipse.jgit.storage.file.FileRepositoryBuilder
-import java.nio.file.Path
 import java.time.Instant
 
 class JGitRepository(
-    val session: GitSession
+    private val session: GitSession,
+    private val notificationManager: NotificationManager
 ) : GitRepository {
 
     private val _statusUpdates = MutableSharedFlow<Unit>(replay = 1)
@@ -143,13 +140,14 @@ class JGitRepository(
                                     0 // Should not happen for standard tags
                                 }
                             }
+
                             is org.eclipse.jgit.revwalk.RevCommit -> revObject.commitTime
                             else -> 0
                         }
                     } catch (e: Exception) {
                         0
                     }
-                    
+
                     Triple(tagName, commitTime, ref)
                 }
                 .filter { (name, _, _) -> filter == null || name.lowercase().contains(filter) }
@@ -229,6 +227,126 @@ class JGitRepository(
 
     override suspend fun commit(message: String) = withContext(Dispatchers.IO) {
         val repository = repoState?.repository ?: return@withContext
-        Git(repository).commit().setMessage(message).call()
+        Git(repository).commit()
+            .setMessage(message)
+            .call()
+    }
+
+    override suspend fun fetch() = withContext(Dispatchers.IO) {
+        val repository = repoState?.repository ?: return@withContext
+        val cmd = Git(repository).fetch()
+        val monitor = NotificationProgressMonitor(
+            notificationManager = notificationManager,
+            cmd = cmd,
+            title = "Fetch",
+            startMessage = "Fetching",
+            successMessage = "Fetch réussi"
+        )
+        cmd.setProgressMonitor(monitor)
+        try {
+            monitor.call()
+        } catch (e: Exception) {
+            println("Error fetching: ${e.message}")
+        }
+    }
+
+    override suspend fun pull() = withContext(Dispatchers.IO) {
+        val repository = repoState?.repository ?: return@withContext
+        val cmd = Git(repository).pull()
+        val monitor = NotificationProgressMonitor(
+            notificationManager = notificationManager,
+            cmd = cmd,
+            title = "Pull",
+            startMessage = "Pulling",
+            successMessage = "Pull réussi"
+        )
+        cmd.setProgressMonitor(monitor)
+        try {
+            monitor.call()
+        } catch (e: Exception) {
+            println("Error pulling: ${e.message}")
+        }
+    }
+
+    override suspend fun push(distantBranch: String?, force: Boolean, pushTags: Boolean) = withContext(Dispatchers.IO) {
+        val repository = repoState?.repository ?: return@withContext
+        val cmd = Git(repository).push().setForce(force)
+
+        if (distantBranch != null) {
+            cmd.setRemote(distantBranch)
+        }
+        if (pushTags) {
+            cmd.setPushTags()
+        }
+
+        val monitor = NotificationProgressMonitor(
+            notificationManager = notificationManager,
+            cmd = cmd,
+            title = "Push",
+            startMessage = "Pushing",
+            successMessage = "Push réussi"
+        )
+        cmd.setProgressMonitor(monitor)
+        try {
+            monitor.call()
+        } catch (e: Exception) {
+            println("Error pushing: ${e.message}")
+        }
+    }
+
+    override suspend fun stash() = withContext(Dispatchers.IO) {
+        val repository = repoState?.repository ?: return@withContext
+        try {
+            Git(repository).stashCreate().setIncludeUntracked(true).call()
+            notificationManager.createNotification(
+                title = "Stash",
+                message = "Stash créé avec succès",
+                status = Notification.Status.Success
+            )
+        } catch (e: Exception) {
+            notificationManager.createNotification(
+                title = "Stash",
+                message = e.message ?: "Erreur inconnue",
+                status = Notification.Status.Error
+            )
+        }
+    }
+
+    override suspend fun unstash(stashName: String) = withContext(Dispatchers.IO) {
+        val repository = repoState?.repository ?: return@withContext
+        try {
+            Git(repository).stashApply().setStashRef(stashName).call()
+            notificationManager.createNotification(
+                title = "Unstash",
+                message = "Stash appliqué avec succès",
+                status = Notification.Status.Success
+            )
+        } catch (e: Exception) {
+            notificationManager.createNotification(
+                title = "Unstash",
+                message = e.message ?: "Erreur inconnue",
+                status = Notification.Status.Error
+            )
+        }
+    }
+
+    override suspend fun createBranch(name: String) = withContext(Dispatchers.IO) {
+        val repository = repoState?.repository ?: return@withContext
+        val git = Git(repository)
+        try {
+            git.branchCreate().setName(name).call()
+            git.checkout().setName(name).call()
+            notificationManager.createNotification(
+                title = "Create branch",
+                message = "Branche créée avec succès",
+                status = Notification.Status.Success
+            )
+        } catch (e: Exception) {
+            notificationManager.createNotification(
+                title = "Create branch",
+                message = e.message ?: "Erreur inconnue",
+                status = Notification.Status.Error
+            )
+        }
     }
 }

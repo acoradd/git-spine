@@ -6,6 +6,7 @@ import fr.accoradd.gitspine.domain.model.GraphNode
 import fr.accoradd.gitspine.domain.model.WorkspaceStatus
 import kotlinx.coroutines.flow.Flow
 import org.eclipse.jgit.lib.Repository
+import java.io.File
 import java.nio.file.Path
 
 interface GitRepository {
@@ -33,4 +34,11 @@ interface GitRepository {
 
     // Commit
     suspend fun commit(message: String)
+
+    suspend fun fetch()
+    suspend fun pull()
+    suspend fun push(distantBranch: String?, force: Boolean, pushTags: Boolean)
+    suspend fun stash()
+    suspend fun unstash(stashName: String)
+    suspend fun createBranch(name: String)
 }

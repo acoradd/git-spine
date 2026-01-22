@@ -18,10 +18,8 @@ import fr.accoradd.gitspine.domain.model.Notification
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.HorizontalProgressBar
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
-import org.jetbrains.jewel.ui.component.IndeterminateHorizontalProgressBar
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 
@@ -47,13 +45,13 @@ fun NotificationToast(
     val iconKey = when (notification.status) {
         Notification.Status.Success -> AllIconsKeys.General.InspectionsOK
         Notification.Status.Error -> AllIconsKeys.General.Error
-        Notification.Status.Running -> AllIconsKeys.General.Information
+        else -> AllIconsKeys.General.Information
     }
 
     val iconTint = when (notification.status) {
         Notification.Status.Success -> JewelTheme.globalColors.text.info
         Notification.Status.Error -> JewelTheme.globalColors.text.error
-        Notification.Status.Running -> JewelTheme.globalColors.text.normal
+        else -> JewelTheme.globalColors.text.normal
     }
 
     AnimatedVisibility(
@@ -118,23 +116,6 @@ fun NotificationToast(
                     style = JewelTheme.defaultTextStyle,
                     color = JewelTheme.globalColors.text.info
                 )
-            }
-
-            if (notification.status == Notification.Status.Running) {
-                Spacer(modifier = Modifier.height(10.dp))
-                when (val progress = notification.progress) {
-                    is Notification.Progress.Determinate -> {
-                        HorizontalProgressBar(
-                            progress = progress.current.toFloat() / progress.total.toFloat(),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                    is Notification.Progress.Indeterminate -> {
-                        IndeterminateHorizontalProgressBar(
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
             }
         }
     }
