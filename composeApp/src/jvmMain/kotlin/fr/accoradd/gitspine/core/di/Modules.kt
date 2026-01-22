@@ -43,10 +43,11 @@ val appModule = module {
     factory { StageAllUseCase(get()) }
     factory { UnstageAllUseCase(get()) }
     factory { DiscardChangesUseCase(get()) }
+    factory { CloneUseCase(get()) }
 
     // ViewModels
     single { TitlebarViewModel() }
-    single { ProjectViewModel() }
+    single { ProjectViewModel(get()) }
     viewModel { WelcomeScreenViewModel(get()) }
     viewModel { RepositoryScreenViewModel(get()) }
     viewModel { GraphViewModel(get()) }
