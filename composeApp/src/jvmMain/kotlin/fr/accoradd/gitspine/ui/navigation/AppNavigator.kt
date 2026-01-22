@@ -13,6 +13,9 @@ class AppNavigator(
     private val _navigationEvents = MutableSharedFlow<Screen>(extraBufferCapacity = 1)
     val navigationEvents = _navigationEvents.asSharedFlow()
 
+    private val _cloneDialogRequested = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val cloneDialogRequested = _cloneDialogRequested.asSharedFlow()
+
     fun back() {
         // Logique de retour arrière
     }
@@ -29,8 +32,8 @@ class AppNavigator(
         navigateTo(Screen.Welcome)
     }
 
-    fun navigateToAddRepository() {
-        navigateTo(Screen.AddRepository)
+    fun openCloneDialog() {
+        _cloneDialogRequested.tryEmit(Unit)
     }
 
     fun navigateToSettings() {

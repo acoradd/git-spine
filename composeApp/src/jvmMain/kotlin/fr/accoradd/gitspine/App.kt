@@ -11,10 +11,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import fr.accoradd.gitspine.core.settings.Theme
-import fr.accoradd.gitspine.domain.model.Project
 import fr.accoradd.gitspine.ui.navigation.AppNavigator
 import fr.accoradd.gitspine.ui.navigation.Screen
-import fr.accoradd.gitspine.ui.screens.add.AddRepositoryScreen
 import fr.accoradd.gitspine.ui.screens.repository.RepositoryScreen
 import fr.accoradd.gitspine.ui.screens.settings.SettingsScreen
 import fr.accoradd.gitspine.ui.screens.welcome.WelcomeScreen
@@ -48,14 +46,6 @@ fun App(
                     currentTheme = currentTheme,
                     onThemeChange = onThemeChange,
                     onBack = { navController.popBackStack() }
-                )
-            }
-            composable<Screen.AddRepository> {
-                AddRepositoryScreen(
-                    onBack = { navController.popBackStack() },
-                    onCloneSuccess = { path ->
-                        navigator.navigateToRepository(Project(path))
-                    }
                 )
             }
         }

@@ -9,20 +9,14 @@ import androidx.compose.ui.unit.dp
 import fr.accoradd.gitspine.domain.model.Branch
 import fr.accoradd.gitspine.domain.model.Commit
 import fr.accoradd.gitspine.domain.repository.GitRepository
-import fr.accoradd.gitspine.infrastructure.git.JGitRepository
 import fr.accoradd.gitspine.ui.components.common.ThreeColumnResizablePanes
 import fr.accoradd.gitspine.ui.components.repository.CommitData
 import fr.accoradd.gitspine.ui.components.repository.CommitList
 import fr.accoradd.gitspine.ui.components.repository.RepositoryLeftPanel
 import fr.accoradd.gitspine.ui.components.workspace.WorkspaceChangesPanel
-import androidx.navigation.NavController
 import fr.accoradd.gitspine.ui.navigation.AppNavigator
-import fr.accoradd.gitspine.ui.navigation.Screen
 import fr.accoradd.gitspine.ui.theme.jewelColors
-import fr.accoradd.gitspine.ui.viewmodel.GraphViewModel
-import fr.accoradd.gitspine.ui.viewmodel.ProjectViewModel
 import fr.accoradd.gitspine.ui.viewmodel.RepositoryScreenViewModel
-import fr.accoradd.gitspine.ui.viewmodel.TitlebarViewModel
 import fr.accoradd.gitspine.ui.viewmodel.WorkspaceViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -237,7 +231,7 @@ fun RepositoryScreen(
 
             // Add Repo & Settings
             // TODO: Use Jewel Icons
-            Text("+", modifier = Modifier.clickable { navigator.navigateToAddRepository() })
+            Text("+", modifier = Modifier.clickable { navigator.openCloneDialog() })
             Spacer(modifier = Modifier.width(8.dp))
             Text("⚙", modifier = Modifier.clickable { navigator.navigateToSettings() })
         }
@@ -248,39 +242,35 @@ fun RepositoryScreen(
             initialLeftWidth = 0.2f,
             initialRightWidth = 0.25f,
             leftContent = {
-                if (isRepoReady) {
-                    LeftPanel(
-                        localBranches = localBranches,
-                        remoteBranches = remoteBranches,
-                        tags = tags,
-                        localBranchSearchQuery = localBranchSearchQuery,
-                        remoteBranchSearchQuery = remoteBranchSearchQuery,
-                        tagSearchQuery = tagSearchQuery,
-                        hasMoreRemoteBranches = hasMoreRemoteBranches,
-                        hasMoreTags = hasMoreTags,
-                        onBranchClick = { /* ... */ },
-                        onTagClick = { /* ... */ },
-                        onLoadLocalBranches = ::loadLocalBranches,
-                        onLocalBranchSearch = { query ->
-                            localBranchSearchQuery = query
-                            loadLocalBranches()
-                        },
-                        onLoadRemoteBranches = { loadRemoteBranches(reset = true) },
-                        onLoadMoreRemoteBranches = { loadRemoteBranches(reset = false) },
-                        onRemoteBranchSearch = { query ->
-                            remoteBranchSearchQuery = query
-                            loadRemoteBranches(reset = true)
-                        },
-                        onLoadTags = { loadTags(reset = true) },
-                        onLoadMoreTags = { loadTags(reset = false) },
-                        onTagSearch = { query ->
-                            tagSearchQuery = query
-                            loadTags(reset = true)
-                        }
-                    )
-                } else {
-                    Box(modifier = Modifier.fillMaxSize())
-                }
+                LeftPanel(
+                    localBranches = localBranches,
+                    remoteBranches = remoteBranches,
+                    tags = tags,
+                    localBranchSearchQuery = localBranchSearchQuery,
+                    remoteBranchSearchQuery = remoteBranchSearchQuery,
+                    tagSearchQuery = tagSearchQuery,
+                    hasMoreRemoteBranches = hasMoreRemoteBranches,
+                    hasMoreTags = hasMoreTags,
+                    onBranchClick = { /* ... */ },
+                    onTagClick = { /* ... */ },
+                    onLoadLocalBranches = ::loadLocalBranches,
+                    onLocalBranchSearch = { query ->
+                        localBranchSearchQuery = query
+                        loadLocalBranches()
+                    },
+                    onLoadRemoteBranches = { loadRemoteBranches(reset = true) },
+                    onLoadMoreRemoteBranches = { loadRemoteBranches(reset = false) },
+                    onRemoteBranchSearch = { query ->
+                        remoteBranchSearchQuery = query
+                        loadRemoteBranches(reset = true)
+                    },
+                    onLoadTags = { loadTags(reset = true) },
+                    onLoadMoreTags = { loadTags(reset = false) },
+                    onTagSearch = { query ->
+                        tagSearchQuery = query
+                        loadTags(reset = true)
+                    }
+                )
             },
             centerContent = {
                 CenterPanel(

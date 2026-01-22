@@ -86,9 +86,7 @@ fun DecoratedWindowScope.AppTitleBar(
                         }
                         selectableItem(
                             selected = false,
-                            onClick = {
-                                navigator.navigateToAddRepository()
-                            }
+                            onClick = { navigator.openCloneDialog() }
                         ) {
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
