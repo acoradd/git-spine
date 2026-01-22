@@ -7,18 +7,21 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material3.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import fr.accoradd.gitspine.domain.model.Notification
-import fr.accoradd.gitspine.ui.components.common.ToolbarIconButton
 import kotlinx.coroutines.launch
+import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.CircularProgressIndicator
+import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.IconButton
+import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 
 @Composable
 fun NotificationToast(
@@ -39,133 +42,88 @@ fun NotificationToast(
         }
     }
 
+    val backgroundColor = when (notification.status) {
+        Notification.Status.Error -> Color(0xFFFFCDD2)
+        Notification.Status.Success -> Color(0xFFC8E6C9)
+        Notification.Status.Running -> JewelTheme.globalColors.panelBackground
+    }
+
     AnimatedVisibility(
         visible = visible,
         enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
         exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
     ) {
-        Card(
+        Column(
             modifier = modifier
                 .width(350.dp)
-                .padding(8.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = when (notification.status) {
-                    Notification.Status.Error -> MaterialTheme.colorScheme.errorContainer
-                    Notification.Status.Success -> MaterialTheme.colorScheme.primaryContainer
-                    Notification.Status.Running -> MaterialTheme.colorScheme.surfaceContainerHigh
-                }
-            )
+                .padding(8.dp)
+                .shadow(6.dp, RoundedCornerShape(8.dp))
+                .background(backgroundColor, RoundedCornerShape(8.dp))
+                .padding(12.dp)
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth()
+            // Header: Titre + bouton fermer
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Header: Titre + bouton fermer
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 4.dp, top = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        // Icon de statut
-                        when (notification.status) {
-                            Notification.Status.Success -> Icon(
-                                Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Notification.Status.Error -> Icon(
-                                Icons.Default.Error,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            else -> {}
-                        }
-
-                        if (notification.status != Notification.Status.Running) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-
-                        Text(
-                            text = notification.title,
-                            style = MaterialTheme.typography.titleSmall,
-                            color = when (notification.status) {
-                                Notification.Status.Error -> MaterialTheme.colorScheme.onErrorContainer
-                                Notification.Status.Success -> MaterialTheme.colorScheme.onPrimaryContainer
-                                Notification.Status.Running -> MaterialTheme.colorScheme.onSurface
-                            }
+                    // Icon de statut
+                    when (notification.status) {
+                        Notification.Status.Success -> Icon(
+                            key = AllIconsKeys.General.InspectionsOK,
+                            contentDescription = null,
+                            tint = Color(0xFF2E7D32),
+                            modifier = Modifier.size(20.dp)
                         )
+                        Notification.Status.Error -> Icon(
+                            key = AllIconsKeys.General.Error,
+                            contentDescription = null,
+                            tint = Color(0xFFC62828),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        else -> {}
                     }
 
-                    IconButton(
-                        onClick = {
-                            visible = false
-                            // Délai pour l'animation
-                            scope.launch {
-                                kotlinx.coroutines.delay(300)
-                                onDismiss()
-                            }
-                        },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = "Fermer",
-                            modifier = Modifier.size(18.dp),
-                            tint = when (notification.status) {
-                                Notification.Status.Error -> MaterialTheme.colorScheme.onErrorContainer
-                                Notification.Status.Success -> MaterialTheme.colorScheme.onPrimaryContainer
-                                Notification.Status.Running -> MaterialTheme.colorScheme.onSurface
-                            }
-                        )
+                    if (notification.status != Notification.Status.Running) {
+                        Spacer(modifier = Modifier.width(8.dp))
                     }
+
+                    Text(text = notification.title)
                 }
 
-                // Message
-                if (notification.message.isNotBlank()) {
-                    Text(
-                        text = notification.message,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        color = when (notification.status) {
-                            Notification.Status.Error -> MaterialTheme.colorScheme.onErrorContainer
-                            Notification.Status.Success -> MaterialTheme.colorScheme.onPrimaryContainer
-                            Notification.Status.Running -> MaterialTheme.colorScheme.onSurfaceVariant
+                IconButton(
+                    onClick = {
+                        visible = false
+                        scope.launch {
+                            kotlinx.coroutines.delay(300)
+                            onDismiss()
                         }
+                    }
+                ) {
+                    Icon(
+                        key = AllIconsKeys.Actions.Close,
+                        contentDescription = "Fermer",
+                        modifier = Modifier.size(16.dp)
                     )
                 }
+            }
 
-                // Progress bar
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                ) {
-                    when (val progress = notification.progress) {
-                        is Notification.Progress.Indeterminate -> {
-                            if (notification.status == Notification.Status.Running) {
-                                LinearProgressIndicator(
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-                        }
-                        is Notification.Progress.Determinate -> {
-                            if (notification.status == Notification.Status.Running || progress.percentage < 1f) {
-                                LinearProgressIndicator(
-                                    progress = { progress.percentage },
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
-                        }
-                    }
-                }
+            // Message
+            if (notification.message.isNotBlank()) {
+                Text(
+                    text = notification.message,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+
+            // Progress bar
+            if (notification.status == Notification.Status.Running) {
+                Spacer(modifier = Modifier.height(12.dp))
+                CircularProgressIndicator()
             }
         }
     }

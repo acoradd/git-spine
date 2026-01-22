@@ -28,7 +28,6 @@ import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.VerticalScrollbar
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import fr.accoradd.gitspine.ui.theme.jewelColors
-import fr.accoradd.gitspine.ui.theme.JetBrainsMonoFamily
 
 data class CommitColumn(
     val id: String,

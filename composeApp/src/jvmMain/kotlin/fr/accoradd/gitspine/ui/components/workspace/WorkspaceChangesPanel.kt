@@ -5,19 +5,20 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import fr.accoradd.gitspine.domain.model.FileStatus
-import fr.accoradd.gitspine.domain.model.FileStatusType
 import fr.accoradd.gitspine.domain.model.WorkspaceStatus
+import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.CircularProgressIndicator
+import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.Link
+import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 
 @Composable
 fun WorkspaceChangesPanel(
@@ -77,16 +78,12 @@ fun WorkspaceChangesPanel(
                 },
                 headerActions = {
                     if (status.unstagedCount > 0) {
-                        TextButton(onClick = onStageAll) {
-                            Text("Tout indexer")
-                        }
+                        Link(text = "Tout indexer", onClick = onStageAll)
                     }
                 },
                 footerActions = {
                     if (status.stagedCount > 0) {
-                        TextButton(onClick = onUnstageAll) {
-                            Text("Tout désindexer")
-                        }
+                        Link(text = "Tout désindexer", onClick = onUnstageAll)
                     }
                 },
                 isStaged = true
@@ -137,7 +134,7 @@ private fun FileTreeSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.medium)
+            .background(JewelTheme.globalColors.panelBackground, RoundedCornerShape(8.dp))
     ) {
         // Header
         Row(
@@ -153,15 +150,12 @@ private fun FileTreeSection(
                 modifier = Modifier.weight(1f)
             ) {
                 Icon(
-                    imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
-                    contentDescription = if (expanded) "Collapse" else "Expand"
+                    key = if (expanded) AllIconsKeys.General.ChevronDown else AllIconsKeys.General.ChevronRight,
+                    contentDescription = if (expanded) "Réduire" else "Développer",
+                    modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
+                Text(text = title)
             }
             headerActions?.invoke()
         }
@@ -173,8 +167,7 @@ private fun FileTreeSection(
                     Text(
                         text = "Aucun fichier",
                         modifier = Modifier.padding(12.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = JewelTheme.globalColors.text.disabled
                     )
                 } else {
                     FileTreeView(
@@ -214,15 +207,14 @@ private fun EmptyState() {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.Check,
+                key = AllIconsKeys.General.InspectionsOK,
                 contentDescription = null,
                 modifier = Modifier.size(48.dp),
-                tint = MaterialTheme.colorScheme.primary
+                tint = Color(0xFF4CAF50)
             )
             Text(
                 text = "Aucun changement",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = JewelTheme.globalColors.text.disabled
             )
         }
     }

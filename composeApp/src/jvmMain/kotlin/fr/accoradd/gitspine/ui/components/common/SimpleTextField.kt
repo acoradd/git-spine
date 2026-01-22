@@ -1,16 +1,11 @@
 package fr.accoradd.gitspine.ui.components.common
 
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import org.jetbrains.jewel.ui.component.TextField
 
-/**
- * Wrapper simple pour TextField compatible avec l'ancienne API
- * Utilise Material3 OutlinedTextField au lieu de Jewel TextField
- * car l'API de Jewel 0.33 est trop complexe pour nos besoins
- */
 @Composable
 fun SimpleTextField(
     value: String,
@@ -22,17 +17,14 @@ fun SimpleTextField(
     leadingIcon: (@Composable () -> Unit)? = null,
     trailingIcon: (@Composable () -> Unit)? = null
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        modifier = modifier.fillMaxWidth(),
-        placeholder = if (placeholder.isNotEmpty()) {
-            { Text(placeholder) }
-        } else null,
+    val state = rememberTextFieldState(value)
+
+    TextField(
         enabled = enabled,
+        state = state,
+        modifier = modifier,
         readOnly = readOnly,
         leadingIcon = leadingIcon,
-        trailingIcon = trailingIcon,
-        singleLine = true
+        trailingIcon = trailingIcon
     )
 }

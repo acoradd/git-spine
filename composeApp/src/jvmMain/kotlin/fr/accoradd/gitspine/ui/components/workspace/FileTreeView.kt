@@ -5,9 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -15,6 +12,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fr.accoradd.gitspine.domain.model.FileStatusType
+import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.IconButton
+import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.icon.IconKey
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 
 @Composable
 fun FileTreeView(
@@ -66,10 +69,7 @@ private fun FolderItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    if (indent == 0) MaterialTheme.colorScheme.surfaceContainerLow
-                    else MaterialTheme.colorScheme.surface
-                )
+                .background(JewelTheme.globalColors.panelBackground)
                 .height(36.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -84,29 +84,27 @@ private fun FolderItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
+                    key = if (expanded) AllIconsKeys.General.ChevronDown else AllIconsKeys.General.ChevronRight,
                     contentDescription = if (expanded) "Collapse" else "Expand",
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Icon(
-                    imageVector = if (expanded) Icons.Default.FolderOpen else Icons.Default.Folder,
+                    key = if (expanded) AllIconsKeys.Nodes.Folder else AllIconsKeys.Nodes.Folder,
                     contentDescription = "Folder",
                     modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = Color(0xFF90CAF9)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = folder.name,
-                    style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Visible
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "(${allFilePaths.size})",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = JewelTheme.globalColors.text.disabled
                 )
             }
 
@@ -117,36 +115,33 @@ private fun FolderItem(
             ) {
                 if (isStaged) {
                     IconButton(
-                        onClick = { onFolderAction(allFilePaths, FileTreeAction.Unstage) },
-                        modifier = Modifier.size(32.dp)
+                        onClick = { onFolderAction(allFilePaths, FileTreeAction.Unstage) }
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Clear,
+                            key = AllIconsKeys.Actions.Cancel,
                             contentDescription = "Désindexer le dossier",
                             modifier = Modifier.size(16.dp)
                         )
                     }
                 } else {
                     IconButton(
-                        onClick = { onFolderAction(allFilePaths, FileTreeAction.Stage) },
-                        modifier = Modifier.size(32.dp)
+                        onClick = { onFolderAction(allFilePaths, FileTreeAction.Stage) }
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Add,
+                            key = AllIconsKeys.General.Add,
                             contentDescription = "Indexer le dossier",
                             modifier = Modifier.size(16.dp)
                         )
                     }
                 }
                 IconButton(
-                    onClick = { onFolderAction(allFilePaths, FileTreeAction.Discard) },
-                    modifier = Modifier.size(32.dp)
+                    onClick = { onFolderAction(allFilePaths, FileTreeAction.Discard) }
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Delete,
+                        key = AllIconsKeys.Actions.GC,
                         contentDescription = "Supprimer les modifications du dossier",
                         modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.error
+                        tint = Color(0xFFF44336)
                     )
                 }
             }
@@ -187,7 +182,7 @@ private fun FileItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = file.status.statusType.icon(),
+                key = file.status.statusType.iconKey(),
                 contentDescription = file.status.statusType.name,
                 tint = file.status.statusType.color(),
                 modifier = Modifier.size(16.dp)
@@ -195,7 +190,6 @@ private fun FileItem(
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = file.name,
-                style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Visible
             )
@@ -207,36 +201,33 @@ private fun FileItem(
         ) {
             if (isStaged) {
                 IconButton(
-                    onClick = { onAction(file.path, FileTreeAction.Unstage) },
-                    modifier = Modifier.size(32.dp)
+                    onClick = { onAction(file.path, FileTreeAction.Unstage) }
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Clear,
+                        key = AllIconsKeys.Actions.Cancel,
                         contentDescription = "Désindexer",
                         modifier = Modifier.size(16.dp)
                     )
                 }
             } else {
                 IconButton(
-                    onClick = { onAction(file.path, FileTreeAction.Stage) },
-                    modifier = Modifier.size(32.dp)
+                    onClick = { onAction(file.path, FileTreeAction.Stage) }
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Add,
+                        key = AllIconsKeys.General.Add,
                         contentDescription = "Indexer",
                         modifier = Modifier.size(16.dp)
                     )
                 }
             }
             IconButton(
-                onClick = { onAction(file.path, FileTreeAction.Discard) },
-                modifier = Modifier.size(32.dp)
+                onClick = { onAction(file.path, FileTreeAction.Discard) }
             ) {
                 Icon(
-                    imageVector = Icons.Default.Delete,
+                    key = AllIconsKeys.Actions.GC,
                     contentDescription = "Annuler",
                     modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.error
+                    tint = Color(0xFFF44336)
                 )
             }
         }
@@ -250,13 +241,13 @@ enum class FileTreeAction {
 }
 
 // Extension functions for file status icons and colors
-private fun FileStatusType.icon() = when (this) {
-    FileStatusType.ADDED -> Icons.Default.Add
-    FileStatusType.MODIFIED -> Icons.Default.Edit
-    FileStatusType.DELETED -> Icons.Default.Delete
-    FileStatusType.UNTRACKED -> Icons.Default.Star
-    FileStatusType.CONFLICTING -> Icons.Default.Warning
-    FileStatusType.RENAMED -> Icons.Default.Info
+private fun FileStatusType.iconKey(): IconKey = when (this) {
+    FileStatusType.ADDED -> AllIconsKeys.General.Add
+    FileStatusType.MODIFIED -> AllIconsKeys.Actions.Edit
+    FileStatusType.DELETED -> AllIconsKeys.Actions.GC
+    FileStatusType.UNTRACKED -> AllIconsKeys.FileTypes.Unknown
+    FileStatusType.CONFLICTING -> AllIconsKeys.General.Warning
+    FileStatusType.RENAMED -> AllIconsKeys.Actions.Forward
 }
 
 private fun FileStatusType.color() = when (this) {
