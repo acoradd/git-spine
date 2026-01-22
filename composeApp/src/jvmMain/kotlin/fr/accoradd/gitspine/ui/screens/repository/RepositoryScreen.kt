@@ -1,6 +1,6 @@
 package fr.accoradd.gitspine.ui.screens.repository
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -14,16 +14,17 @@ import fr.accoradd.gitspine.ui.components.repository.CommitData
 import fr.accoradd.gitspine.ui.components.repository.CommitList
 import fr.accoradd.gitspine.ui.components.repository.RepositoryLeftPanel
 import fr.accoradd.gitspine.ui.components.workspace.WorkspaceChangesPanel
-import fr.accoradd.gitspine.ui.navigation.AppNavigator
 import fr.accoradd.gitspine.ui.theme.jewelColors
 import fr.accoradd.gitspine.ui.viewmodel.RepositoryScreenViewModel
 import fr.accoradd.gitspine.ui.viewmodel.WorkspaceViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.window.defaultTitleBarStyle
 import org.koin.compose.koinInject
 import java.nio.file.Path
 import java.time.format.DateTimeFormatter
@@ -36,7 +37,6 @@ sealed class CommitOrWip {
 
 @Composable
 fun RepositoryScreen(
-    navigator: AppNavigator,
     path: String
 ) {
     val gitRepository: GitRepository = koinInject()
@@ -68,8 +68,6 @@ fun RepositoryScreen(
     var isLoadingLocalBranches by remember { mutableStateOf(false) }
     var isLoadingRemoteBranches by remember { mutableStateOf(false) }
     var isLoadingTags by remember { mutableStateOf(false) }
-
-    var isRepoReady by remember { mutableStateOf(false) }
 
     fun loadLocalBranches() {
         if (isLoadingLocalBranches) return
@@ -201,29 +199,10 @@ fun RepositoryScreen(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Top Bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(40.dp)
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Logo
-            Box(modifier = Modifier.size(32.dp).padding(4.dp), contentAlignment = Alignment.Center) {
-                Text("GS")
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Add Repo & Settings
-            // TODO: Use Jewel Icons
-            Text("+", modifier = Modifier.clickable { navigator.openCloneDialog() })
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("⚙", modifier = Modifier.clickable { navigator.navigateToSettings() })
-        }
-
+    Column(
+        modifier = Modifier.fillMaxSize()
+            .background(JewelTheme.defaultTitleBarStyle.colors.background)
+    ) {
         // Content
         ThreeColumnResizablePanes(
             modifier = Modifier.fillMaxSize().padding(4.dp),
@@ -286,15 +265,6 @@ fun RepositoryScreen(
             }
         )
     }
-}
-
-@Composable
-private fun ActionLink(text: String, onClick: () -> Unit) {
-    Text(
-        text = text,
-        modifier = Modifier.clickable(onClick = onClick),
-        // Style compact
-    )
 }
 
 @Composable

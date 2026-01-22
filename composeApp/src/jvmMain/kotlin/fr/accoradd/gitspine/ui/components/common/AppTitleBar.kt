@@ -69,6 +69,14 @@ fun DecoratedWindowScope.AppTitleBar(
                 AppTitleBarProject(scope, projectViewModel, projectState, navigator)
             }
         }
+        Row(
+            modifier = Modifier.align(Alignment.End),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (projectState.project != null) {
+                IconActionButton(key = AllIconsKeys.General.Settings, contentDescription = "Settings", onClick = { navigator.navigateToSettings() })
+            }
+        }
     }
 }
 

@@ -39,7 +39,7 @@ fun App(
             composable<Screen.Welcome> { WelcomeScreen() }
             composable<Screen.Repository> { backStackEntry ->
                 val repositoryRoute = backStackEntry.toRoute<Screen.Repository>()
-                RepositoryScreen(navigator = navigator, path = repositoryRoute.path)
+                RepositoryScreen(path = repositoryRoute.path)
             }
             composable<Screen.Settings> {
                 SettingsScreen(

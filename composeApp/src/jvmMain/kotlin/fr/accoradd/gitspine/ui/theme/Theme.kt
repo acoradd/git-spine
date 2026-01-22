@@ -3,7 +3,6 @@ package fr.accoradd.gitspine.ui.theme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import org.jetbrains.jewel.foundation.GlobalColors
-import org.jetbrains.jewel.foundation.OutlineColors
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.*
 import org.jetbrains.jewel.intui.window.decoratedWindow
@@ -59,13 +58,15 @@ fun AppTheme(
             titleBarStyle = if (isDark) {
                 TitleBarStyle.dark(
                     colors = TitleBarColors.dark(
-                        backgroundColor = themeColors.bar.bg
+                        backgroundColor = themeColors.bar.bg,
+                        borderColor = themeColors.bar.bg,
                     )
                 )
             } else {
                 TitleBarStyle.lightWithLightHeader(
                     colors = TitleBarColors.lightWithLightHeader(
-                        backgroundColor = themeColors.bar.bg
+                        backgroundColor = themeColors.bar.bg,
+                        borderColor = themeColors.bar.bg
                     )
                 )
             },
