@@ -4,6 +4,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -15,12 +17,12 @@ import fr.accoradd.gitspine.domain.model.Notification
 import fr.accoradd.gitspine.infrastructure.filesystem.FileDialogs
 import fr.accoradd.gitspine.infrastructure.git.GitCloner
 import fr.accoradd.gitspine.core.notifications.NotificationManager
-import fr.accoradd.gitspine.ui.components.common.SimpleTextField
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
 import org.koin.compose.koinInject
 import java.nio.file.Path
+import kotlin.io.path.exists
 
 @Composable
 fun CloneRepositoryDialog(
@@ -30,8 +32,8 @@ fun CloneRepositoryDialog(
     val notificationManager: NotificationManager = koinInject()
     val scope = rememberCoroutineScope()
 
-    var url by remember { mutableStateOf("") }
-    var destinationPath by remember { mutableStateOf<Path?>(null) }
+    val urlState = rememberTextFieldState()
+    val pathState = rememberTextFieldState()
     var isCloning by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -48,12 +50,8 @@ fun CloneRepositoryDialog(
 
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("URL du dépôt")
-                SimpleTextField(
-                    value = url,
-                    onValueChange = {
-                        url = it
-                        errorMessage = null
-                    },
+                TextField(
+                    state = urlState,
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !isCloning
                 )
@@ -66,19 +64,31 @@ fun CloneRepositoryDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    SimpleTextField(
-                        value = destinationPath?.toString() ?: "",
-                        onValueChange = {},
+                    TextField(
+                        state = pathState,
                         modifier = Modifier.weight(1f),
-                        readOnly = true,
                         enabled = !isCloning
                     )
                     OutlinedButton(
                         onClick = {
                             scope.launch {
-                                val path = FileDialogs.openDirectory("Sélectionner le répertoire de destination")
+                                val currentPath = pathState.text
+                                val startPath = if (currentPath.isNotBlank()) {
+                                    try {
+                                        var currentStartPath = Path.of(currentPath.trim().toString())
+                                        if (!currentStartPath.exists()) {
+                                            currentStartPath = currentStartPath.parent
+                                        }
+                                        currentStartPath
+                                    } catch (e: Exception) {
+                                        null
+                                    }
+                                } else {
+                                    null
+                                }
+                                val path = FileDialogs.openDirectory("Sélectionner le répertoire de destination", startPath)
                                 if (path != null) {
-                                    destinationPath = path
+                                    pathState.setTextAndPlaceCursorAtEnd(path.toAbsolutePath().toString())
                                     errorMessage = null
                                 }
                             }
@@ -117,12 +127,13 @@ fun CloneRepositoryDialog(
                 }
                 DefaultButton(
                     onClick = {
-                        val dest = destinationPath
+                        val dest = pathState.text.toString()
+                        val url = urlState.text.toString()
                         if (url.isBlank()) {
                             errorMessage = "Veuillez entrer une URL"
                             return@DefaultButton
                         }
-                        if (dest == null) {
+                        if (dest.isBlank()) {
                             errorMessage = "Veuillez sélectionner un dossier de destination"
                             return@DefaultButton
                         }
@@ -139,7 +150,7 @@ fun CloneRepositoryDialog(
 
                             val result = GitCloner.clone(
                                 url = url,
-                                destinationPath = dest.toString(),
+                                destinationPath = dest,
                                 onProgress = { progress ->
                                     val notifProgress = if (progress.total > 0) {
                                         Notification.Progress.Determinate(progress.completed, progress.total)
@@ -159,7 +170,7 @@ fun CloneRepositoryDialog(
                                     id = notificationId,
                                     message = "Dépôt cloné avec succès"
                                 )
-                                onCloneSuccess(dest)
+                                onCloneSuccess(Path.of(dest))
                             } else {
                                 val errorMsg = result.exceptionOrNull()?.message ?: "Erreur inconnue"
                                 notificationManager.failNotification(

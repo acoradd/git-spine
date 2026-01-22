@@ -19,15 +19,18 @@ object FileDialogs {
     private val isWindows = System.getProperty("os.name").lowercase().contains("windows")
     private val isMac = System.getProperty("os.name").lowercase().contains("mac")
 
-    suspend fun openDirectory(title: String = "Open Repository"): Path? = withContext(Dispatchers.IO) {
+    suspend fun openDirectory(
+        title: String = "Open Repository",
+        initialDirectory: Path? = null
+    ): Path? = withContext(Dispatchers.IO) {
         when {
-            isWindows -> openDirectoryWindows(title)
-            isMac -> openDirectoryMac(title)
-            else -> openDirectoryLinux(title)
+            isWindows -> openDirectoryWindows(title, initialDirectory)
+            isMac -> openDirectoryMac(title, initialDirectory)
+            else -> openDirectoryLinux(title, initialDirectory)
         }
     }
 
-    private fun openDirectoryWindows(title: String): Path? {
+    private fun openDirectoryWindows(title: String, initialDirectory: Path?): Path? {
         Ole32.INSTANCE.CoInitializeEx(Pointer.NULL, Ole32.COINIT_APARTMENTTHREADED)
         try {
             val pFolder = PointerByReference()
@@ -46,7 +49,7 @@ object FileDialogs {
             )
 
             if (COMUtils.FAILED(hr)) {
-                return fallbackDirectoryChooser(title)
+                return fallbackDirectoryChooser(title, initialDirectory)
             }
 
             val fileDialog = IFileOpenDialog(pFolder.value)
@@ -58,6 +61,25 @@ object FileDialogs {
 
             // Set title
             fileDialog.setTitle(WString(title))
+
+            // Set initial directory if provided
+            if (initialDirectory != null) {
+                try {
+                    val pShellItem = PointerByReference()
+                    val initialPath = initialDirectory.toAbsolutePath().toString()
+                    hr = SHCreateItemFromParsingName(
+                        WString(initialPath),
+                        Pointer.NULL,
+                        IID("{43826d1e-e718-42ee-bc55-a1e261c37bfe}"), // IID_IShellItem
+                        pShellItem
+                    )
+                    if (COMUtils.SUCCEEDED(hr)) {
+                        fileDialog.setFolder(pShellItem.value)
+                    }
+                } catch (_: Exception) {
+                    // Ignore if setting initial directory fails
+                }
+            }
 
             // Show dialog
             hr = fileDialog.show(null)
@@ -84,10 +106,13 @@ object FileDialogs {
         }
     }
 
-    private fun openDirectoryMac(title: String): Path? {
+    private fun openDirectoryMac(title: String, initialDirectory: Path?): Path? {
         System.setProperty("apple.awt.fileDialogForDirectories", "true")
         try {
             val dialog = FileDialog(null as Frame?, title, FileDialog.LOAD)
+            if (initialDirectory != null) {
+                dialog.directory = initialDirectory.toAbsolutePath().toString()
+            }
             dialog.isVisible = true
             val directory = dialog.directory
             val file = dialog.file
@@ -101,14 +126,20 @@ object FileDialogs {
         }
     }
 
-    private fun openDirectoryLinux(title: String): Path? {
+    private fun openDirectoryLinux(title: String, initialDirectory: Path?): Path? {
         // Try zenity first (GTK), then kdialog (KDE)
-        return tryZenity(title) ?: tryKDialog(title) ?: fallbackDirectoryChooser(title)
+        return tryZenity(title, initialDirectory)
+            ?: tryKDialog(title, initialDirectory)
+            ?: fallbackDirectoryChooser(title, initialDirectory)
     }
 
-    private fun tryZenity(title: String): Path? {
+    private fun tryZenity(title: String, initialDirectory: Path?): Path? {
         return try {
-            val process = ProcessBuilder("zenity", "--file-selection", "--directory", "--title=$title")
+            val args = mutableListOf("zenity", "--file-selection", "--directory", "--title=$title")
+            if (initialDirectory != null) {
+                args.add("--filename=${initialDirectory.toAbsolutePath()}/")
+            }
+            val process = ProcessBuilder(args)
                 .redirectErrorStream(true)
                 .start()
             val result = process.inputStream.bufferedReader().readText().trim()
@@ -119,9 +150,13 @@ object FileDialogs {
         }
     }
 
-    private fun tryKDialog(title: String): Path? {
+    private fun tryKDialog(title: String, initialDirectory: Path?): Path? {
         return try {
-            val process = ProcessBuilder("kdialog", "--getexistingdirectory", "--title", title)
+            val args = mutableListOf("kdialog", "--getexistingdirectory", "--title", title)
+            if (initialDirectory != null) {
+                args.add(initialDirectory.toAbsolutePath().toString())
+            }
+            val process = ProcessBuilder(args)
                 .redirectErrorStream(true)
                 .start()
             val result = process.inputStream.bufferedReader().readText().trim()
@@ -132,10 +167,13 @@ object FileDialogs {
         }
     }
 
-    private fun fallbackDirectoryChooser(title: String): Path? {
+    private fun fallbackDirectoryChooser(title: String, initialDirectory: Path? = null): Path? {
         val chooser = javax.swing.JFileChooser().apply {
             fileSelectionMode = javax.swing.JFileChooser.DIRECTORIES_ONLY
             dialogTitle = title
+            if (initialDirectory != null) {
+                currentDirectory = initialDirectory.toFile()
+            }
         }
         val result = chooser.showOpenDialog(null)
         return if (result == javax.swing.JFileChooser.APPROVE_OPTION) {
@@ -149,6 +187,26 @@ object FileDialogs {
     private const val FOS_PICKFOLDERS = 0x20
     private const val FOS_FORCEFILESYSTEM = 0x40
     private const val SIGDN_FILESYSPATH = 0x80058000.toInt()
+
+    // SHCreateItemFromParsingName from shell32.dll
+    private fun SHCreateItemFromParsingName(
+        pszPath: WString,
+        pbc: Pointer?,
+        riid: IID,
+        ppv: PointerByReference
+    ): WinNT.HRESULT {
+        val shell32 = com.sun.jna.Native.load("shell32", Shell32Extended::class.java)
+        return shell32.SHCreateItemFromParsingName(pszPath, pbc, riid, ppv)
+    }
+
+    private interface Shell32Extended : com.sun.jna.Library {
+        fun SHCreateItemFromParsingName(
+            pszPath: WString,
+            pbc: Pointer?,
+            riid: IID,
+            ppv: PointerByReference
+        ): WinNT.HRESULT
+    }
 
     // IFileOpenDialog wrapper
     private class IFileOpenDialog(pointer: Pointer) : com.sun.jna.platform.win32.COM.Unknown(pointer) {
@@ -166,6 +224,10 @@ object FileDialogs {
 
         fun setTitle(title: WString): WinNT.HRESULT {
             return WinNT.HRESULT(_invokeNativeInt(17, arrayOf(pointer, title)))
+        }
+
+        fun setFolder(psi: Pointer): WinNT.HRESULT {
+            return WinNT.HRESULT(_invokeNativeInt(12, arrayOf(pointer, psi)))
         }
 
         fun getResult(pItem: PointerByReference): WinNT.HRESULT {
