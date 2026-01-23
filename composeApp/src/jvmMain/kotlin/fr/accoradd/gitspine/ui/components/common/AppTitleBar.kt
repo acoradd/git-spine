@@ -131,7 +131,7 @@ private fun AppTitleBarProject(
                 }
             }
 
-            if (projectState.recentsProject.isNotEmpty()) {
+            if (projectState.recentsProject.size > 1) {
                 separator()
             }
 

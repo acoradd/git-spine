@@ -11,6 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import fr.accoradd.gitspine.core.config.AppConfig
 import fr.accoradd.gitspine.core.di.appModule
 import fr.accoradd.gitspine.core.notifications.NotificationManager
+import fr.accoradd.gitspine.core.settings.Settings
 import fr.accoradd.gitspine.core.settings.Theme
 import fr.accoradd.gitspine.ui.components.common.AppBottomBar
 import fr.accoradd.gitspine.ui.components.common.AppTitleBar
@@ -28,7 +29,8 @@ fun main() = application {
         modules(appModule)
     }) {
         val navController = rememberNavController()
-        var currentTheme by remember { mutableStateOf(Theme.SYSTEM) }
+        val settings: Settings = koinInject()
+        val currentTheme = settings.theme.collectAsState(Theme.SYSTEM)
         var showCloneDialog by remember { mutableStateOf(false) }
         val navigator: AppNavigator = koinInject()
         val appViewModel: AppViewModel = koinInject()
@@ -40,7 +42,7 @@ fun main() = application {
             }
         }
 
-        AppTheme(appTheme = currentTheme) {
+        AppTheme(appTheme = currentTheme.value) {
             DecoratedWindow(
                 onCloseRequest = ::exitApplication,
                 title = AppConfig.APP_NAME
@@ -50,8 +52,6 @@ fun main() = application {
                     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                         App(
                             navController = navController,
-                            currentTheme = currentTheme,
-                            onThemeChange = { currentTheme = it },
                             navigator = navigator
                         )
 

@@ -2,22 +2,27 @@ package fr.accoradd.gitspine.ui.screens.settings
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import fr.accoradd.gitspine.core.settings.Settings
 import fr.accoradd.gitspine.core.settings.Theme
+import fr.accoradd.gitspine.ui.viewmodel.AppViewModel
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.RadioButtonRow
 import org.jetbrains.jewel.ui.component.Text
-import fr.accoradd.gitspine.ui.theme.jewelColors
-import fr.accoradd.gitspine.ui.theme.jewelTextStyle
+import org.koin.compose.koinInject
 
 @Composable
 fun SettingsScreen(
-    currentTheme: Theme,
-    onThemeChange: (Theme) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    settings: Settings = koinInject(),
+    appViewModel: AppViewModel = koinInject()
 ) {
+
+    val currentTheme = settings.theme.collectAsState(Theme.SYSTEM)
+
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -56,8 +61,8 @@ fun SettingsScreen(
                     Theme.entries.forEach { theme ->
                         RadioButtonRow(
                             text = theme.name.lowercase().replaceFirstChar { it.uppercase() },
-                            selected = currentTheme == theme,
-                            onClick = { onThemeChange(theme) }
+                            selected = currentTheme.value == theme,
+                            onClick = { appViewModel.setTheme(theme) }
                         )
                     }
                 }

@@ -3,16 +3,17 @@ package fr.accoradd.gitspine.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import fr.accoradd.gitspine.domain.model.Project
+import fr.accoradd.gitspine.domain.model.RecentRepository
+import fr.accoradd.gitspine.domain.repository.RecentRepositoryStore
 import fr.accoradd.gitspine.domain.usecase.workspace.CreateBranchUseCase
 import fr.accoradd.gitspine.domain.usecase.workspace.FetchUseCase
 import fr.accoradd.gitspine.domain.usecase.workspace.PullUseCase
 import fr.accoradd.gitspine.domain.usecase.workspace.PushUseCase
 import fr.accoradd.gitspine.domain.usecase.workspace.StashUseCase
 import fr.accoradd.gitspine.domain.usecase.workspace.UnStashUseCase
-import fr.accoradd.gitspine.infrastructure.filesystem.FileDialogs
-import fr.accoradd.gitspine.ui.navigation.AppNavigator
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.nio.file.Path
 
 data class ProjectState(
     val project: Project? = null,
@@ -20,6 +21,7 @@ data class ProjectState(
 )
 
 class ProjectViewModel(
+    private val recentRepositoryStore: RecentRepositoryStore,
     private val fetchUseCase: FetchUseCase,
     private val pullUseCase: PullUseCase,
     private val pushUseCase: PushUseCase,
@@ -31,15 +33,35 @@ class ProjectViewModel(
     private val _state = MutableStateFlow(ProjectState())
     val state: StateFlow<ProjectState> = _state.asStateFlow()
 
-    fun addAndSetProject(projectToSave: Project): ProjectState {
-        if (projectToSave.path == state.value.project?.path && _state.value.recentsProject.any { it.path == projectToSave.path }) {
-            return _state.value
-        } else {
-            return _state.updateAndGet {
-                val project = it.recentsProject.find { it.path == projectToSave.path } ?: projectToSave
-                val recentsProject = listOf(project) + it.recentsProject.filter { it.path != project.path }
-                it.copy(project = project, recentsProject = recentsProject)
+    init {
+        // Load recent repositories from persistent storage
+        viewModelScope.launch {
+            recentRepositoryStore.recentRepositories.collect { recentRepos ->
+                val projects = recentRepos.map { repo ->
+                    Project(
+                        path = Path.of(repo.path),
+                        name = repo.name
+                    )
+                }
+                _state.update { it.copy(recentsProject = projects) }
             }
+        }
+    }
+
+    fun addAndSetProject(projectToSave: Project): ProjectState {
+        // Persist to storage
+        viewModelScope.launch {
+            recentRepositoryStore.addOrUpdate(
+                RecentRepository.create(
+                    path = projectToSave.path.toString(),
+                    name = projectToSave.name
+                )
+            )
+        }
+
+        // Update current project immediately
+        return _state.updateAndGet {
+            it.copy(project = projectToSave)
         }
     }
 

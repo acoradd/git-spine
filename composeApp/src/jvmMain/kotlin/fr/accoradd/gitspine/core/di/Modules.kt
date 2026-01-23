@@ -3,12 +3,14 @@ package fr.accoradd.gitspine.core.di
 import fr.accoradd.gitspine.core.notifications.NotificationManager
 import fr.accoradd.gitspine.core.settings.Settings
 import fr.accoradd.gitspine.domain.repository.GitRepository
+import fr.accoradd.gitspine.domain.repository.RecentRepositoryStore
+import fr.accoradd.gitspine.infrastructure.persistence.JsonRecentRepositoryStore
 import fr.accoradd.gitspine.domain.usecase.graph.GetGraphUseCase
 import fr.accoradd.gitspine.domain.usecase.workspace.*
 import fr.accoradd.gitspine.infrastructure.filesystem.GitIgnoreLoader
 import fr.accoradd.gitspine.infrastructure.git.GitSession
 import fr.accoradd.gitspine.infrastructure.git.JGitRepository
-import fr.accoradd.gitspine.infrastructure.settings.PreferencesSettings
+import fr.accoradd.gitspine.infrastructure.persistence.JsonSettings
 import fr.accoradd.gitspine.ui.navigation.AppNavigator
 import fr.accoradd.gitspine.ui.viewmodel.AppViewModel
 import fr.accoradd.gitspine.ui.viewmodel.GraphViewModel
@@ -25,7 +27,10 @@ val appModule = module {
     single { NotificationManager() }
 
     // Settings
-    single<Settings> { PreferencesSettings() }
+    single<Settings> { JsonSettings() }
+
+    // Persistence
+    single<RecentRepositoryStore> { JsonRecentRepositoryStore() }
 
     // Repositories
     single<GitRepository> { JGitRepository(get(), get()) }
@@ -56,8 +61,8 @@ val appModule = module {
 
     // ViewModels
     single { TitlebarViewModel(get()) }
-    single { ProjectViewModel(get(), get(), get(), get(), get(), get()) }
-    single { AppViewModel(get(), get()) }
+    single { ProjectViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    single { AppViewModel(get(), get(), get()) }
     viewModel { WelcomeScreenViewModel(get()) }
     viewModel { RepositoryScreenViewModel(get()) }
     viewModel { GraphViewModel(get()) }

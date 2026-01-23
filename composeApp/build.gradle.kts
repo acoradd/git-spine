@@ -35,6 +35,7 @@ kotlin {
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs) { exclude(group = "org.jetbrains.compose.material") }
             implementation(libs.kotlinx.coroutinesSwing)
+            implementation(libs.kotlinx.serialization.json)
 
             // Jewel (IntelliJ UI)
             implementation(libs.jewel)

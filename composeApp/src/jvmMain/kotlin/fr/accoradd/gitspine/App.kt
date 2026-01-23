@@ -21,8 +21,6 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 @Composable
 fun App(
     navController: NavHostController,
-    currentTheme: Theme,
-    onThemeChange: (Theme) -> Unit,
     navigator: AppNavigator
 ) {
     LaunchedEffect(Unit) {
@@ -42,11 +40,7 @@ fun App(
                 RepositoryScreen(path = repositoryRoute.path)
             }
             composable<Screen.Settings> {
-                SettingsScreen(
-                    currentTheme = currentTheme,
-                    onThemeChange = onThemeChange,
-                    onBack = { navController.popBackStack() }
-                )
+                SettingsScreen(onBack = { navController.popBackStack() })
             }
         }
     }
