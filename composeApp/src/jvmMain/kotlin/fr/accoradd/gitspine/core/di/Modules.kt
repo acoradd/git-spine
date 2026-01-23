@@ -63,7 +63,7 @@ val appModule = module {
 
     // ViewModels
     single { TitlebarViewModel(get()) }
-    single { ProjectViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    single { ProjectViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     single { AppViewModel(get(), get(), get()) }
     viewModel { WelcomeScreenViewModel(get()) }
     viewModel { RepositoryScreenViewModel(get()) }

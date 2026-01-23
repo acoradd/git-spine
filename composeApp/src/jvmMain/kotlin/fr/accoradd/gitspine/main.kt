@@ -19,10 +19,10 @@ import fr.accoradd.gitspine.ui.components.common.AppTitleBar
 import fr.accoradd.gitspine.ui.components.dialogs.CloneRepositoryDialog
 import fr.accoradd.gitspine.ui.components.notifications.NotificationsContainer
 import fr.accoradd.gitspine.ui.navigation.AppNavigator
+import fr.accoradd.gitspine.ui.navigation.Screen
 import fr.accoradd.gitspine.ui.theme.AppTheme
 import fr.accoradd.gitspine.ui.viewmodel.AppViewModel
 import org.jetbrains.jewel.window.DecoratedWindow
-import org.jetbrains.skiko.currentSystemTheme
 import org.koin.compose.KoinApplication
 import org.koin.compose.koinInject
 
@@ -41,8 +41,20 @@ fun main() = application {
         val isSystemDark = systemThemeDetector.isDarkTheme.collectAsState()
         var showCloneDialog by remember { mutableStateOf(false) }
 
+        // Determine start destination based on last opened project
+        val startDestination: Screen = remember {
+            val lastProject = navigator.projectViewModel.getLastOpenedProject()
+            if (lastProject != null) {
+                navigator.projectViewModel.addAndSetProject(lastProject)
+                Screen.Repository(lastProject.path.toString())
+            } else {
+                Screen.Welcome
+            }
+        }
+
         LaunchedEffect(Unit) {
             systemThemeDetector.startListening(this)
+
             navigator.cloneDialogRequested.collect {
                 showCloneDialog = true
             }
@@ -58,7 +70,8 @@ fun main() = application {
                     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                         App(
                             navController = navController,
-                            navigator = navigator
+                            navigator = navigator,
+                            startDestination = startDestination
                         )
 
                         NotificationsContainer(notificationManager = notificationManager)

@@ -21,7 +21,8 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 @Composable
 fun App(
     navController: NavHostController,
-    navigator: AppNavigator
+    navigator: AppNavigator,
+    startDestination: Screen = Screen.Welcome
 ) {
     LaunchedEffect(Unit) {
         navigator.navigationEvents.collect { route ->
@@ -33,7 +34,7 @@ fun App(
             .fillMaxSize()
             .background(JewelTheme.globalColors.panelBackground) // Fond par défaut d'IntelliJ
     ) {
-        NavHost(navController = navController, startDestination = Screen.Welcome) {
+        NavHost(navController = navController, startDestination = startDestination) {
             composable<Screen.Welcome> { WelcomeScreen() }
             composable<Screen.Repository> { backStackEntry ->
                 val repositoryRoute = backStackEntry.toRoute<Screen.Repository>()

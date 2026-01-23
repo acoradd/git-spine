@@ -2,6 +2,7 @@ package fr.accoradd.gitspine.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import fr.accoradd.gitspine.core.settings.Settings
 import fr.accoradd.gitspine.domain.model.Project
 import fr.accoradd.gitspine.domain.model.RecentRepository
 import fr.accoradd.gitspine.domain.repository.RecentRepositoryStore
@@ -21,6 +22,7 @@ data class ProjectState(
 )
 
 class ProjectViewModel(
+    private val settings: Settings,
     private val recentRepositoryStore: RecentRepositoryStore,
     private val fetchUseCase: FetchUseCase,
     private val pullUseCase: PullUseCase,
@@ -29,6 +31,10 @@ class ProjectViewModel(
     private val unstashUseCase: UnStashUseCase,
     private val createBranchUseCase: CreateBranchUseCase
 ) : ViewModel() {
+
+    companion object {
+        private const val KEY_LAST_PROJECT_PATH = "last.project.path"
+    }
 
     private val _state = MutableStateFlow(ProjectState())
     val state: StateFlow<ProjectState> = _state.asStateFlow()
@@ -57,12 +63,30 @@ class ProjectViewModel(
                     name = projectToSave.name
                 )
             )
+            // Save as last opened project
+            settings.setString(KEY_LAST_PROJECT_PATH, projectToSave.path.toString())
         }
 
         // Update current project immediately
         return _state.updateAndGet {
             it.copy(project = projectToSave)
         }
+    }
+
+    fun removeFromRecent(project: Project) {
+        viewModelScope.launch {
+            recentRepositoryStore.remove(project.path.toString())
+        }
+    }
+
+    fun getLastOpenedProject(): Project? {
+        val path = settings.getString(KEY_LAST_PROJECT_PATH, "")
+        if (path.isEmpty()) return null
+
+        val projectPath = Path.of(path)
+        if (!projectPath.toFile().exists()) return null
+
+        return Project(path = projectPath)
     }
 
     fun clear() {

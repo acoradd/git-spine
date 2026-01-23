@@ -18,15 +18,11 @@ import fr.accoradd.gitspine.ui.navigation.Screen
 import fr.accoradd.gitspine.ui.viewmodel.ProjectState
 import fr.accoradd.gitspine.ui.viewmodel.ProjectViewModel
 import fr.accoradd.gitspine.ui.viewmodel.TitlebarViewModel
-import gitspine.composeapp.generated.resources.Res
-import gitspine.composeapp.generated.resources.dropdown_clone_repository
-import gitspine.composeapp.generated.resources.dropdown_open_repository
-import gitspine.composeapp.generated.resources.ic_gitspine
-import gitspine.composeapp.generated.resources.welcome_title
-import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle
+import gitspine.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Dropdown
 import org.jetbrains.jewel.ui.component.IconActionButton
 import org.jetbrains.jewel.ui.component.Text
@@ -90,7 +86,10 @@ fun DecoratedWindowScope.AppTitleBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (projectState.project != null) {
-                IconActionButton(key = AllIconsKeys.General.Settings, contentDescription = "Settings", onClick = { navigator.navigateToSettings() })
+                IconActionButton(
+                    key = AllIconsKeys.General.Settings,
+                    contentDescription = "Settings",
+                    onClick = { navigator.navigateToSettings() })
             }
         }
     }
@@ -143,9 +142,23 @@ private fun AppTitleBarProject(
                             navigator.navigateToRepository(it)
                         }
                     ) {
-                        Column {
-                            Text(it.name)
-                            Text(it.path.toAbsolutePath().toString())
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column {
+                                Text(it.name)
+                                Text(
+                                    text = it.path.toAbsolutePath().toString(),
+                                    color = JewelTheme.globalColors.text.info
+                                )
+                            }
+                            IconActionButton(
+                                key = AllIconsKeys.General.Close,
+                                contentDescription = "Close",
+                                onClick = { projectViewModel.removeFromRecent(it) }
+                            )
                         }
                     }
                 }
@@ -160,8 +173,17 @@ private fun AppTitleBarProject(
     IconActionButton(key = AllIconsKeys.Vcs.Fetch, contentDescription = "Fetch", onClick = { projectViewModel.fetch() })
     IconActionButton(key = AllIconsKeys.Vcs.Clone, contentDescription = "Pull", onClick = { projectViewModel.pull() })
     IconActionButton(key = AllIconsKeys.Vcs.Push, contentDescription = "Push", onClick = { projectViewModel.push() })
-    IconActionButton(key = AllIconsKeys.Vcs.ShelveSilent, contentDescription = "Stash", onClick = { projectViewModel.stash() })
-    IconActionButton(key = AllIconsKeys.Vcs.Unshelve, contentDescription = "Unstash", onClick = { projectViewModel.unstash() })
-    IconActionButton(key = AllIconsKeys.Vcs.Branch, contentDescription = "New Branch", onClick = { projectViewModel.createBranch() })
+    IconActionButton(
+        key = AllIconsKeys.Vcs.ShelveSilent,
+        contentDescription = "Stash",
+        onClick = { projectViewModel.stash() })
+    IconActionButton(
+        key = AllIconsKeys.Vcs.Unshelve,
+        contentDescription = "Unstash",
+        onClick = { projectViewModel.unstash() })
+    IconActionButton(
+        key = AllIconsKeys.Vcs.Branch,
+        contentDescription = "New Branch",
+        onClick = { projectViewModel.createBranch() })
 
 }

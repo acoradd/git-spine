@@ -51,9 +51,7 @@ fun SettingsScreen(
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    "Thème de l'application",
-                )
+                Text("Thème de l'application")
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically
