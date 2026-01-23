@@ -58,9 +58,7 @@ fun RepositoryScreen(
     var isLoadingMoreCommits by remember { mutableStateOf(false) }
     var hasMoreCommits by remember { mutableStateOf(true) }
 
-    var localBranchSearchQuery by remember { mutableStateOf("") }
-    var remoteBranchSearchQuery by remember { mutableStateOf("") }
-    var tagSearchQuery by remember { mutableStateOf("") }
+    var searchQuery by remember { mutableStateOf("") }
 
     var hasMoreRemoteBranches by remember { mutableStateOf(true) }
     var hasMoreTags by remember { mutableStateOf(true) }
@@ -75,7 +73,7 @@ fun RepositoryScreen(
 
         scope.launch {
             try {
-                gitRepository.getLocalBranches(search = localBranchSearchQuery).collect { loadedBranches ->
+                gitRepository.getLocalBranches(search = searchQuery).collect { loadedBranches ->
                     localBranches = loadedBranches
                     isLoadingLocalBranches = false
                 }
@@ -95,7 +93,7 @@ fun RepositoryScreen(
 
         scope.launch {
             try {
-                gitRepository.getRemoteBranches(skip = skip, limit = limit, search = remoteBranchSearchQuery)
+                gitRepository.getRemoteBranches(skip = skip, limit = limit, search = searchQuery)
                     .collect { loadedBranches ->
                         if (reset) {
                             remoteBranches = loadedBranches
@@ -121,7 +119,7 @@ fun RepositoryScreen(
 
         scope.launch {
             try {
-                gitRepository.getTags(skip = skip, limit = limit, search = tagSearchQuery).collect { loadedTags ->
+                gitRepository.getTags(skip = skip, limit = limit, search = searchQuery).collect { loadedTags ->
                     if (reset) {
                         tags = loadedTags
                     } else {
@@ -212,27 +210,25 @@ fun RepositoryScreen(
                     localBranches = localBranches,
                     remoteBranches = remoteBranches,
                     tags = tags,
-                    remoteBranchSearchQuery = remoteBranchSearchQuery,
-                    tagSearchQuery = tagSearchQuery,
                     hasMoreRemoteBranches = hasMoreRemoteBranches,
                     hasMoreTags = hasMoreTags,
                     onBranchClick = { /* ... */ },
                     onTagClick = { /* ... */ },
                     onLoadLocalBranches = ::loadLocalBranches,
                     onLocalBranchSearch = { query ->
-                        localBranchSearchQuery = query
+                        searchQuery = query
                         loadLocalBranches()
                     },
                     onLoadRemoteBranches = { loadRemoteBranches(reset = true) },
                     onLoadMoreRemoteBranches = { loadRemoteBranches(reset = false) },
                     onRemoteBranchSearch = { query ->
-                        remoteBranchSearchQuery = query
+                        searchQuery = query
                         loadRemoteBranches(reset = true)
                     },
                     onLoadTags = { loadTags(reset = true) },
                     onLoadMoreTags = { loadTags(reset = false) },
                     onTagSearch = { query ->
-                        tagSearchQuery = query
+                        searchQuery = query
                         loadTags(reset = true)
                     }
                 )

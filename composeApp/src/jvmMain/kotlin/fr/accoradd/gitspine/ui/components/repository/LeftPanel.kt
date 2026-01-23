@@ -10,39 +10,33 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
-import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.Modifier.Companion
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.dp
 import fr.accoradd.gitspine.domain.model.Branch
-import fr.accoradd.gitspine.ui.components.common.SearchField
+import fr.accoradd.gitspine.ui.components.common.HorizontalDivider
 import fr.accoradd.gitspine.ui.components.common.SectionHeader
+import fr.accoradd.gitspine.ui.components.common.SimpleTextField
 import fr.accoradd.gitspine.ui.theme.jewelColors
-import jdk.internal.platform.Container.metrics
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import java.io.File.separator
+import org.jetbrains.jewel.window.defaultTitleBarStyle
 
 @Composable
 fun RepositoryLeftPanel(
+
     localBranches: List<Branch>,
     remoteBranches: List<Branch>,
     tags: List<String> = emptyList(),
-
-    // Search states
-    remoteBranchSearchQuery: String = "",
-    tagSearchQuery: String = "",
 
     // Pagination states
     hasMoreRemoteBranches: Boolean = false,
@@ -66,7 +60,7 @@ fun RepositoryLeftPanel(
     modifier: Modifier = Modifier
 ) {
 
-    val localBranchesNames = localBranches.map { it.name }
+    val localBranchesNames = mapOf(Pair("", localBranches.map { it.name }))
     val remoteBranchesMap = remoteBranches
         .groupBy { it.name.substringBefore("/") }
         .mapValues { (_, branchesList) ->
@@ -75,22 +69,66 @@ fun RepositoryLeftPanel(
     val selectedBranch = localBranches.find { it.isHead }?.name ?: remoteBranches.find { it.isHead }?.name
 
     // Expansion states
-    var localExpanded by remember { mutableStateOf(true) }
     var remoteExpanded by remember { mutableStateOf(false) }
     var tagsExpanded by remember { mutableStateOf(false) }
-    var expandedFolders by remember { mutableStateOf(emptySet<String>()) }
 
-    LaunchedEffect(selectedBranch) {
-        selectedBranch?.let {
-            val parts = it.split('/')
-            if (parts.size > 1) {
-                val pathsToExpand = (1 until parts.size).map { i ->
-                    parts.take(i).joinToString("/")
-                }
-                expandedFolders = expandedFolders + pathsToExpand
-            }
-        }
+    Column(
+        modifier = modifier.fillMaxSize()
+    ) {
+
+        SearchRef(
+            onLocalBranchSearch = onLocalBranchSearch,
+            onRemoteBranchSearch = onRemoteBranchSearch,
+            onTagSearch = onTagSearch
+        )
+
+        SectionBranch(
+            "Local",
+            true,
+            localBranches,
+            onLoadLocalBranches,
+            localBranchesNames,
+            selectedBranch,
+            onBranchClick
+        )
+
+        SectionBranch(
+            "Remote",
+            false,
+            localBranches,
+            onLoadRemoteBranches,
+            remoteBranchesMap,
+            selectedBranch,
+            onBranchClick,
+            hasMoreRemoteBranches,
+            onLoadMoreRemoteBranches
+        )
+
+        SectionTag(
+            tagsExpanded,
+            tags,
+            onLoadTags,
+            onTagClick,
+            hasMoreTags,
+            onLoadMoreTags
+        )
     }
+}
+
+@Composable
+private fun ColumnScope.SectionBranch(
+    title: String,
+    expandedByDefault: Boolean,
+    branches: List<Branch>,
+    onLoadBranches: () -> Unit,
+    branchesNamesByOrigin: Map<String, List<String>>,
+    selectedBranch: String?,
+    onBranchClick: (String) -> Unit,
+    hasMoreBranches: Boolean = false,
+    onLoadMoreBranches: () -> Unit = {},
+) {
+    var expanded by remember { mutableStateOf(expandedByDefault) }
+    var expandedFolders by remember { mutableStateOf(emptySet<String>()) }
 
     val onToggleFolder = { path: String ->
         expandedFolders = if (expandedFolders.contains(path)) {
@@ -100,189 +138,147 @@ fun RepositoryLeftPanel(
         }
     }
 
-    Column(
-        modifier = modifier.fillMaxSize()
-    ) {
-        val searchState = rememberTextFieldState("")
-
-        BasicTextField(
-            value = searchState.text.toString(),
-            onValueChange = { searchState.setTextAndPlaceCursorAtEnd(it) },
-            textStyle = JewelTheme.defaultTextStyle.copy(
-                color = JewelTheme.globalColors.text.normal
-            ),
-            cursorBrush = SolidColor(JewelTheme.globalColors.text.normal),
-            modifier = Modifier.fillMaxWidth().padding(8.dp),
-            decorationBox = { innerTextField ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    // Icône AVANT
-                    Icon(
-                        key = AllIconsKeys.Actions.Find,
-                        contentDescription = "Search",
-                        modifier = Modifier,
-                        tint = JewelTheme.globalColors.text.info
-                    )
-
-                    Spacer(Modifier.width(8.dp))
-
-                    // Le champ de saisie lui-même
-                    Box(Modifier.weight(1f)) {
-                        if (searchState.text.isEmpty()) {
-                            Text("Rechercher...", color = Color.Gray)
-                        }
-                        innerTextField()
+    LaunchedEffect(selectedBranch) {
+        if (expandedByDefault) {
+            selectedBranch?.let {
+                val parts = it.split('/')
+                if (parts.size > 1) {
+                    val pathsToExpand = (1 until parts.size).map { i ->
+                        parts.take(i).joinToString("/")
                     }
-
-                    if (searchState.text.isNotEmpty()) {
-                        IconActionButton(
-                            key = AllIconsKeys.Actions.Close,
-                            contentDescription = "Clear",
-                            onClick = { searchState.clearText() },
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-            })
-
-        Divider(
-            orientation = Orientation.Horizontal,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-            color = JewelTheme.globalColors.borders.normal,
-            thickness = 1.dp
-        )
-
-        LaunchedEffect(searchState.text) {
-            onLocalBranchSearch(searchState.text.toString())
-        }
-
-        val localBranchesCount = if (localBranches.size >= 100) "99+" else localBranches.size.toString()
-
-        SectionHeader(
-            title = "Branches locales ($localBranchesCount)",
-            expanded = localExpanded,
-            onToggle = {
-                localExpanded = !localExpanded
-                if (localExpanded && localBranches.isEmpty()) {
-                    onLoadLocalBranches()
+                    expandedFolders = expandedFolders + pathsToExpand
                 }
             }
-        )
+        }
+    }
 
-        if (localExpanded) {
-            Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
+    SectionHeader(
+        title = title,
+        expanded = expanded,
+        onToggle = {
+            expanded = !expanded
+            if (expanded && branches.isEmpty()) {
+                onLoadBranches()
+            }
+        }
+    )
 
-                LazyScrollableContent {
-                    if (localBranches.isEmpty()) {
-                        item { EmptyState("Aucune branche locale") }
-                    } else {
+    if (expanded) {
+        Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            LazyScrollableContent {
+                if (branches.isEmpty()) {
+                    item { EmptyState("Aucune branche locale") }
+                } else {
+                    branchesNamesByOrigin.forEach { (origin, branches) ->
+                        if (origin.isNotEmpty()) {
+                            item(key = "origin-header-$origin") {
+                                RemoteHeader(remoteName = origin)
+                            }
+                        }
                         branchTreeView(
-                            branches = localBranchesNames,
+                            branches = branches,
                             selectedBranch = selectedBranch,
                             onBranchClick = onBranchClick,
                             expandedFolders = expandedFolders,
                             onToggleFolder = onToggleFolder,
-                            keyPrefix = "local"
+                            keyPrefix = "local",
+                            baseLevel = 0,
                         )
                     }
                 }
+                if (hasMoreBranches) {
+                    item { LoadMoreButton(onClick = onLoadMoreBranches) }
+                }
             }
         }
 
-        // Section: Branches distantes
-        val remoteBranchesCount = remoteBranchesMap.values.sumOf { it.size }
-        val remoteBranchesDisplay = if (remoteBranchesCount >= 100) "99+" else remoteBranchesCount.toString()
+        HorizontalDivider()
+    }
+}
 
-        SectionHeader(
-            title = "Branches distantes ($remoteBranchesDisplay)",
-            expanded = remoteExpanded,
-            onToggle = {
-                remoteExpanded = !remoteExpanded
-                if (remoteExpanded && remoteBranches.isEmpty()) {
-                    onLoadRemoteBranches()
-                }
+@Composable
+private fun ColumnScope.SectionTag(
+    expandedByDefault: Boolean,
+    tags: List<String>,
+    onLoadTags: () -> Unit,
+    onTagClick: (String) -> Unit,
+    hasMoreTags: Boolean,
+    onLoadMoreTags: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(expandedByDefault) }
+    SectionHeader(
+        title = "Tags",
+        expanded = expanded,
+        onToggle = {
+            expanded = !expanded
+            if (expanded && tags.isEmpty()) {
+                onLoadTags()
             }
-        )
+        }
+    )
 
-        if (remoteExpanded) {
-            Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                SearchField(
-                    value = remoteBranchSearchQuery,
-                    onValueChange = onRemoteBranchSearch,
-                    onDebouncedValueChange = onRemoteBranchSearch,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    placeholder = "Chercher..."
-                )
-
-                LazyScrollableContent {
-                    if (remoteBranches.isEmpty()) {
-                        item { EmptyState("Aucune branche distante") }
-                    } else {
-                        remoteBranchesMap.forEach { (remote, branches) ->
-                            item(key = "remote-header-$remote") {
-                                RemoteHeader(remoteName = remote, branchesCount = branches.size)
-                            }
-                            branchTreeView(
-                                branches = branches,
-                                selectedBranch = selectedBranch,
-                                onBranchClick = onBranchClick,
-                                expandedFolders = expandedFolders,
-                                onToggleFolder = onToggleFolder,
-                                baseLevel = 1,
-                                keyPrefix = "remote-$remote"
-                            )
-                        }
-                        if (hasMoreRemoteBranches) {
-                            item { LoadMoreButton(onClick = onLoadMoreRemoteBranches) }
-                        }
+    if (expanded) {
+        Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            LazyScrollableContent {
+                if (tags.isEmpty()) {
+                    item { EmptyState("Aucun tag") }
+                } else {
+                    items(tags, key = { "tag-$it" }) { tag ->
+                        TagItem(
+                            tag = tag,
+                            onClick = { onTagClick(tag) }
+                        )
+                    }
+                    if (hasMoreTags) {
+                        item { LoadMoreButton(onClick = onLoadMoreTags) }
                     }
                 }
             }
         }
+    }
+}
 
-        // Section: Tags
-        val tagsCount = if (tags.size >= 100) "99+" else tags.size.toString()
+@Composable
+private fun SearchRef(
+    onLocalBranchSearch: (String) -> Unit,
+    onRemoteBranchSearch: (String) -> Unit,
+    onTagSearch: (String) -> Unit
+) {
+    val searchState = rememberTextFieldState("")
 
-        SectionHeader(
-            title = "Tags ($tagsCount)",
-            expanded = tagsExpanded,
-            onToggle = {
-                tagsExpanded = !tagsExpanded
-                if (tagsExpanded && tags.isEmpty()) {
-                    onLoadTags()
-                }
-            }
-        )
-
-        if (tagsExpanded) {
-            Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                SearchField(
-                    value = tagSearchQuery,
-                    onValueChange = onTagSearch,
-                    onDebouncedValueChange = onTagSearch,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    placeholder = "Chercher..."
+    SimpleTextField(
+        state = searchState,
+        modifier = Modifier.fillMaxWidth(),
+        leadingContent = {
+            Icon(
+                key = AllIconsKeys.Actions.Find,
+                contentDescription = "Search",
+                modifier = Modifier,
+                tint = JewelTheme.globalColors.text.info
+            )
+        },
+        placeholder = {
+            Text("Rechercher...", color = Color.Gray)
+        },
+        trailingContent = {
+            if (searchState.text.isNotEmpty()) {
+                IconActionButton(
+                    key = AllIconsKeys.Actions.Close,
+                    contentDescription = "Clear",
+                    onClick = { searchState.clearText() },
+                    modifier = Modifier.size(16.dp)
+                        .pointerHoverIcon(PointerIcon.Hand)
                 )
-
-                LazyScrollableContent {
-                    if (tags.isEmpty()) {
-                        item { EmptyState("Aucun tag") }
-                    } else {
-                        items(tags, key = { "tag-$it" }) { tag ->
-                            TagItem(
-                                tag = tag,
-                                onClick = { onTagClick(tag) }
-                            )
-                        }
-                        if (hasMoreTags) {
-                            item { LoadMoreButton(onClick = onLoadMoreTags) }
-                        }
-                    }
-                }
             }
         }
+    )
+
+    HorizontalDivider()
+
+    LaunchedEffect(searchState.text) {
+        onLocalBranchSearch(searchState.text.toString())
+        onRemoteBranchSearch(searchState.text.toString())
+        onTagSearch(searchState.text.toString())
     }
 }
 
@@ -320,22 +316,14 @@ private fun LoadMoreButton(onClick: () -> Unit) {
 }
 
 @Composable
-private fun RemoteHeader(remoteName: String, branchesCount: Int) {
+private fun RemoteHeader(remoteName: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(jewelColors.grey(3)) // Fond légèrement plus foncé
             .padding(horizontal = 16.dp, vertical = 4.dp)
     ) {
-        Text(
-            text = remoteName,
-            color = jewelColors.blue(4)
-        )
+        Text(text = remoteName)
         Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = "($branchesCount)",
-            color = jewelColors.grey(8)
-        )
     }
 }
 
@@ -346,31 +334,35 @@ private fun TagItem(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
+
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                if (isHovered) jewelColors.grey(3) else jewelColors.grey(1)
-            )
-            .pointerHoverIcon(PointerIcon.Hand)
-            .clickable(onClick = onClick)
-            .hoverable(interactionSource)
-            .padding(horizontal = 24.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+        modifier = Modifier.padding(start = 8.dp, end = 8.dp)
     ) {
-        // Tag icon (simple box for now)
-        Box(
+        Row(
             modifier = Modifier
-                .size(8.dp)
-                .background(jewelColors.yellow(4))
-        )
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(4.dp))
+                .background(
+                    when {
+                        isHovered -> JewelTheme.defaultTitleBarStyle.colors.background
+                        else -> Color.Transparent
+                    }
+                )
+                .pointerHoverIcon(PointerIcon.Hand)
+                .clickable(onClick = onClick)
+                .hoverable(interactionSource)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                key = AllIconsKeys.General.Pin,
+                contentDescription = tag
+            )
 
-        Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(8.dp))
 
-        Text(
-            text = tag,
-            color = jewelColors.grey(12)
-        )
+            Text(text = tag)
+        }
     }
 }
 
