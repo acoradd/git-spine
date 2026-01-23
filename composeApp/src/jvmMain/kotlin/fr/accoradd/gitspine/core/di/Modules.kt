@@ -11,6 +11,7 @@ import fr.accoradd.gitspine.infrastructure.filesystem.GitIgnoreLoader
 import fr.accoradd.gitspine.infrastructure.git.GitSession
 import fr.accoradd.gitspine.infrastructure.git.JGitRepository
 import fr.accoradd.gitspine.infrastructure.persistence.JsonSettings
+import fr.accoradd.gitspine.infrastructure.system.SystemThemeDetector
 import fr.accoradd.gitspine.ui.navigation.AppNavigator
 import fr.accoradd.gitspine.ui.viewmodel.AppViewModel
 import fr.accoradd.gitspine.ui.viewmodel.GraphViewModel
@@ -38,6 +39,7 @@ val appModule = module {
     single { GitSession(get()) }
 
     single { AppNavigator(get()) }
+    single { SystemThemeDetector() }
 
     // UseCases - Graph
     factory { GetGraphUseCase(get()) }

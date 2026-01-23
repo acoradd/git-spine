@@ -1,7 +1,9 @@
 package fr.accoradd.gitspine.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import fr.accoradd.gitspine.infrastructure.system.SystemThemeDetector
 import org.jetbrains.jewel.foundation.GlobalColors
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.*
@@ -16,11 +18,11 @@ import fr.accoradd.gitspine.core.settings.Theme as AppTheme
 @Composable
 fun AppTheme(
     appTheme: AppTheme = AppTheme.SYSTEM,
+    isSystemDark: Boolean,
     content: @Composable () -> Unit
 ) {
     val textStyle = JewelTheme.createDefaultTextStyle()
     val editorStyle = JewelTheme.createEditorTextStyle()
-    val isSystemDark = isSystemInDarkTheme()
 
     val isDark = when (appTheme) {
         AppTheme.DARK -> true
