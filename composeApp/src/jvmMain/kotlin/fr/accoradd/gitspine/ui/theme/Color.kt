@@ -20,6 +20,11 @@ data class AppThemeColors(
     val toolwindow: AppThemeColorsToolwindow
 )
 
+data class GraphColors(
+    val border: Color,
+    val bg: Color,
+)
+
 val AppLightThemeColors = AppThemeColors(
     bar = AppThemeColorsBar(
         bg = Color(0xFFEBECF0)
@@ -44,28 +49,17 @@ val AppDarkThemeColors = AppThemeColors(
     )
 )
 
-val IjPanelBg = Color(0xFFF7F8FA)
 
-// --- IntelliJ New UI: Light Theme ---
-val IjLightBg = Color(0xFFF7F8FA)
-val IjLightSurface = Color(0xFFFFFFFF)
-val IjLightBorder = Color(0xFFEBECF0)
-val IjLightText = Color(0xFF3C3F41)
-val IjLightTextSecondary = Color(0xFF767A7C)
-val IjLightHover = Color(0xFFEAF2FF)
-val IjLightHover2 = Color(0xFFEBECF0)
 
-// --- IntelliJ New UI: Dark Theme ---
-val IjDarkBg = Color(0xFF26282B)
-val IjDarkSurface = Color(0xFF191A1C)
-val IjDarkBorder = Color(0xFF26282B)
-val IjDarkText = Color(0xFFDFE1E5)
-val IjDarkTextSecondary = Color(0xFF8C9196)
-val IjDarkHover = Color(0xFF323B4F)
-
-// --- Accent Colors ---
-val IjBlue = Color(0xFF3574F0)
-val IjBlueOnContainer = Color(0xFFA8C5FF)
-val IjYellow = Color(0xFFFFD600) // Using the same yellow for consistency
-val IjRed = Color(0xFFD50000)     // Using the same red for consistency
-val White = Color(0xFFFFFFFF)
+val graphColors = listOf(
+    GraphColors(Color(0xFF17A1C0), Color(0xFFC2E5ED)),
+    GraphColors(Color(0xFF237BF8), Color(0xFFC0D7FB)),
+    GraphColors(Color(0xFF8F02C2), Color(0xFFE1BEEE)),
+    GraphColors(Color(0xFFCF43C3), Color(0xFFEEC3EB)),
+    GraphColors(Color(0xFFD90372), Color(0xFFF3BED9)),
+    GraphColors(Color(0xFFDA4646), Color(0xFFF0BEBE)),
+    GraphColors(Color(0xFFF25E30), Color(0xFFFAD4C9)),
+    GraphColors(Color(0xFFF2CA35), Color(0xFFFAF0CA)),
+    GraphColors(Color(0xFF7CD93A), Color(0xFFDCF3CB)),
+    GraphColors(Color(0xFF30CE9E), Color(0xFFC9F1E4)),
+)

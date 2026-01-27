@@ -6,6 +6,7 @@ import fr.accoradd.gitspine.domain.model.Branch
 import fr.accoradd.gitspine.domain.model.Commit
 import fr.accoradd.gitspine.domain.model.CommitOrWip
 import fr.accoradd.gitspine.domain.repository.GitRepository
+import fr.accoradd.gitspine.domain.usecase.graph.GraphUseCase
 import fr.accoradd.gitspine.infrastructure.git.GitSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +18,7 @@ import java.nio.file.Path
 class RepositoryScreenViewModel(
     private val gitSession: GitSession,
     private val gitRepository: GitRepository,
+    private val graphUseCase: GraphUseCase
 ) : ViewModel() {
 
     private val _localBranches = MutableStateFlow<List<Branch>>(emptyList())
@@ -154,6 +156,8 @@ class RepositoryScreenViewModel(
                 println("Error loading more commits: ${e.message}")
                 isLoadingCommit = false
             }
+        }.invokeOnCompletion {
+            updateGraph(null, _commits.value)
         }
     }
 
@@ -190,6 +194,12 @@ class RepositoryScreenViewModel(
                         -> null
                 else -> item
             }
+        }
+    }
+
+    private fun updateGraph(wip: CommitOrWip.Wip?, commits: List<Commit>) {
+        viewModelScope.launch {
+            graphUseCase.invoke(wip, commits)
         }
     }
 }

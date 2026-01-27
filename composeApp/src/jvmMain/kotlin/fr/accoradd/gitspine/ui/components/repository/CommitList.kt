@@ -52,7 +52,7 @@ fun CommitList(
 ) {
     val columns = remember {
         listOf(
-            TableColumn(id = "branch", title = "Branche", defaultWidth = 0.1f, resizable = false),
+            TableColumn(id = "branch", title = "Ref", defaultWidth = 0.1f, resizable = false),
             TableColumn(id = "graph", title = "Graph", defaultWidth = 0.3f),
             TableColumn(id = "message", title = "Message", defaultWidth = 0.4f),
             TableColumn(id = "date", title = "Date", defaultWidth = 0.2f)

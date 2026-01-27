@@ -163,12 +163,6 @@ class JGitRepository(
         }
     }
 
-
-    override fun getGraph(): Flow<List<GraphNode>> = flow {
-        // TODO: Implémenter l'algo de construction du graph
-        emit(emptyList())
-    }
-
     override suspend fun getStatus(): WorkspaceStatus = withContext(Dispatchers.IO) {
         val repository = repoState?.repository ?: return@withContext WorkspaceStatus()
         val git = Git(repository)
