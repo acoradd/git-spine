@@ -8,6 +8,9 @@ import kotlinx.coroutines.flow.Flow
 interface GitRepository {
     fun getCommits(skip: Int = 0, limit: Int = 1000): Flow<List<Commit>>
 
+    // Get HEAD commit ID
+    suspend fun getHeadCommitId(): String?
+
     // Load all local branches, with optional search
     fun getLocalBranches(search: String? = null): Flow<List<Branch>>
 

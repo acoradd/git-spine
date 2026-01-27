@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import fr.accoradd.gitspine.domain.model.Branch
 import fr.accoradd.gitspine.domain.model.Commit
 import fr.accoradd.gitspine.domain.model.CommitOrWip
+import fr.accoradd.gitspine.domain.model.GraphResult
 import fr.accoradd.gitspine.domain.repository.GitRepository
 import fr.accoradd.gitspine.domain.usecase.graph.GraphUseCase
 import fr.accoradd.gitspine.infrastructure.git.GitSession
@@ -27,6 +28,7 @@ class RepositoryScreenViewModel(
 
     private val _commits = MutableStateFlow<List<Commit>>(emptyList())
     private val _commit = MutableStateFlow<CommitOrWip?>(null)
+    private val _graphResult = MutableStateFlow<GraphResult?>(null)
 
 
     private val _searchQuery = MutableStateFlow("")
@@ -44,6 +46,7 @@ class RepositoryScreenViewModel(
     val tags: StateFlow<List<String>> = _tags.asStateFlow()
     val commits: StateFlow<List<Commit>> = _commits.asStateFlow()
     val commit: StateFlow<CommitOrWip?> = _commit.asStateFlow()
+    val graphResult: StateFlow<GraphResult?> = _graphResult.asStateFlow()
 
     val hasMoreRemoteBranch: StateFlow<Boolean> = _hasMoreRemoteBranch.asStateFlow()
     val hasMoreTags: StateFlow<Boolean> = _hasMoreTags.asStateFlow()
@@ -157,7 +160,7 @@ class RepositoryScreenViewModel(
                 isLoadingCommit = false
             }
         }.invokeOnCompletion {
-            updateGraph(null, _commits.value)
+            updateGraph(false, _commits.value)
         }
     }
 
@@ -197,9 +200,15 @@ class RepositoryScreenViewModel(
         }
     }
 
-    private fun updateGraph(wip: CommitOrWip.Wip?, commits: List<Commit>) {
+    fun refreshGraph(hasWip: Boolean) {
+        updateGraph(hasWip, _commits.value)
+    }
+
+    private fun updateGraph(hasWip: Boolean, commits: List<Commit>) {
         viewModelScope.launch {
-            graphUseCase.invoke(wip, commits)
+            val headCommitId = gitRepository.getHeadCommitId()
+            val result = graphUseCase.invoke(hasWip, commits, headCommitId)
+            _graphResult.value = result
         }
     }
 }

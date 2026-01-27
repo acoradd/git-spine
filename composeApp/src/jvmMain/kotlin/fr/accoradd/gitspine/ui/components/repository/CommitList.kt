@@ -18,6 +18,9 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import fr.accoradd.gitspine.domain.model.GraphResult
+import fr.accoradd.gitspine.ui.components.graph.GraphCell
+import fr.accoradd.gitspine.ui.components.graph.getEdgesForCell
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
@@ -39,12 +42,14 @@ data class CommitData(
     val message: String,
     val author: String,
     val date: String,
-    val isSelected: Boolean = false
+    val isSelected: Boolean = false,
+    val row: Int = 0
 )
 
 @Composable
 fun CommitList(
     commits: List<CommitData> = emptyList(),
+    graphResult: GraphResult? = null,
     onCommitClick: (CommitData) -> Unit = {},
     onLoadMore: () -> Unit = {},
     hasMore: Boolean = false,
@@ -101,6 +106,7 @@ fun CommitList(
                         commit = commit,
                         columns = columns,
                         columnWidths = columnWidths,
+                        graphResult = graphResult,
                         onClick = { onCommitClick(commit) },
                         onWidthChanged = { columnId, newWidth ->
                             columnWidths[columnId] = newWidth
@@ -183,6 +189,7 @@ private fun CommitRow(
     commit: CommitData,
     columns: List<TableColumn>,
     columnWidths: Map<String, Float>,
+    graphResult: GraphResult?,
     onClick: () -> Unit,
     onWidthChanged: (String, Float) -> Unit
 ) {
@@ -223,9 +230,23 @@ private fun CommitRow(
                         }
 
                         "graph" -> {
-                            Text(
-                                text = "●"
-                            )
+                            if (graphResult != null && graphResult.width > 0) {
+                                val position = graphResult.positions[commit.hash]
+                                Row {
+                                    for (col in 0 until graphResult.width) {
+                                        val hasNode = position?.column == col
+                                        val cellEdges = getEdgesForCell(commit.row, col, graphResult.edges)
+                                        GraphCell(
+                                            row = commit.row,
+                                            column = col,
+                                            hasNode = hasNode,
+                                            edges = cellEdges
+                                        )
+                                    }
+                                }
+                            } else {
+                                Text(text = "●")
+                            }
                         }
 
                         "hash" -> {

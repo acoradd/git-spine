@@ -22,6 +22,11 @@ class JGitRepository(
             return session.activeRepository.value
         }
 
+    override suspend fun getHeadCommitId(): String? = withContext(Dispatchers.IO) {
+        val repository = repoState?.repository ?: return@withContext null
+        repository.resolve("HEAD")?.name
+    }
+
     override fun getCommits(skip: Int, limit: Int): Flow<List<Commit>> = flow {
         val repository = repoState?.repository ?: run {
             emit(emptyList())

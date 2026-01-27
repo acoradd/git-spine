@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import fr.accoradd.gitspine.domain.model.Commit
 import fr.accoradd.gitspine.domain.model.CommitOrWip
+import fr.accoradd.gitspine.domain.model.GraphResult
 import fr.accoradd.gitspine.ui.components.common.ThreeColumnResizablePanes
 import fr.accoradd.gitspine.ui.components.repository.CommitData
 import fr.accoradd.gitspine.ui.components.repository.CommitList
@@ -43,6 +44,7 @@ fun RepositoryScreen(
 
     val selectedItem = repositoryScreenViewModel.commit.collectAsState()
     val hasMoreCommits = repositoryScreenViewModel.hasMoreCommits.collectAsState()
+    val graphResult = repositoryScreenViewModel.graphResult.collectAsState()
 
     LaunchedEffect(path) {
         repositoryScreenViewModel.open(Path.of(path))
@@ -56,11 +58,11 @@ fun RepositoryScreen(
         }
     }
 
-    // Auto-select WIP when changes appear
+    // Auto-select WIP when changes appear and refresh graph
     LaunchedEffect(workspaceState.status.hasChanges) {
         if (workspaceState.status.hasChanges && selectedItem.value == null) {
             repositoryScreenViewModel.setCommit(CommitOrWip.Wip)
-        } else if (!workspaceState.status.hasChanges && selectedItem is CommitOrWip.Wip) {
+        } else if (!workspaceState.status.hasChanges && selectedItem.value is CommitOrWip.Wip) {
             repositoryScreenViewModel.setCommit(
                 if (commits.value.isNotEmpty()) {
                     CommitOrWip.CommitItem(commits.value.first())
@@ -69,6 +71,8 @@ fun RepositoryScreen(
                 }
             )
         }
+        // Refresh graph when WIP status changes
+        repositoryScreenViewModel.refreshGraph(workspaceState.status.hasChanges)
     }
 
     Column(
@@ -104,6 +108,7 @@ fun RepositoryScreen(
             centerContent = {
                 CenterPanel(
                     commits = commits.value,
+                    graphResult = graphResult.value,
                     workspaceStatus = workspaceState.status,
                     selectedItem = selectedItem.value,
                     onItemClick = { repositoryScreenViewModel.onClickCommit(it) },
@@ -132,6 +137,7 @@ fun RepositoryScreen(
 @Composable
 private fun CenterPanel(
     commits: List<Commit>,
+    graphResult: GraphResult?,
     workspaceStatus: fr.accoradd.gitspine.domain.model.WorkspaceStatus,
     selectedItem: CommitOrWip?,
     onItemClick: (CommitOrWip) -> Unit,
@@ -139,9 +145,10 @@ private fun CenterPanel(
     hasMore: Boolean
 ) {
     val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm") }
+    val hasWip = workspaceStatus.hasChanges
 
     val commitDataList = buildList {
-        if (workspaceStatus.hasChanges) {
+        if (hasWip) {
             add(
                 CommitData(
                     hash = "WIP",
@@ -149,11 +156,13 @@ private fun CenterPanel(
                     message = "Modifications en cours (${workspaceStatus.stagedCount + workspaceStatus.unstagedCount} fichiers)",
                     author = "",
                     date = "",
-                    isSelected = selectedItem is CommitOrWip.Wip
+                    isSelected = selectedItem is CommitOrWip.Wip,
+                    row = 0
                 )
             )
         }
-        commits.forEach { commit ->
+        commits.forEachIndexed { index, commit ->
+            val row = if (hasWip) index + 1 else index
             add(
                 CommitData(
                     hash = commit.id,
@@ -166,7 +175,8 @@ private fun CenterPanel(
                             java.time.ZoneId.systemDefault()
                         )
                     ),
-                    isSelected = selectedItem is CommitOrWip.CommitItem && selectedItem.commit.id == commit.id
+                    isSelected = selectedItem is CommitOrWip.CommitItem && selectedItem.commit.id == commit.id,
+                    row = row
                 )
             )
         }
@@ -174,6 +184,7 @@ private fun CenterPanel(
 
     CommitList(
         commits = commitDataList,
+        graphResult = graphResult,
         onCommitClick = { commitData ->
             if (commitData.hash == "WIP") {
                 onItemClick(CommitOrWip.Wip)
