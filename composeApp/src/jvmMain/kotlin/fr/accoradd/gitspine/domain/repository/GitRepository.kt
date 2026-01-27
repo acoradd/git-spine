@@ -4,9 +4,20 @@ import fr.accoradd.gitspine.domain.model.Branch
 import fr.accoradd.gitspine.domain.model.Commit
 import fr.accoradd.gitspine.domain.model.WorkspaceStatus
 import kotlinx.coroutines.flow.Flow
+import java.time.Instant
 
 interface GitRepository {
-    fun getCommits(skip: Int = 0, limit: Int = 1000): Flow<List<Commit>>
+    /**
+     * Charge les commits triés par date décroissante.
+     * @param beforeTimestamp Si non null, ne charge que les commits avant ce timestamp (exclusif)
+     * @param excludeCommitId Si non null, exclut ce commit (utile si plusieurs commits ont le même timestamp)
+     * @param limit Nombre max de commits à charger
+     */
+    fun getCommits(
+        beforeTimestamp: Instant? = null,
+        excludeCommitId: String? = null,
+        limit: Int = 100
+    ): Flow<List<Commit>>
 
     // Get HEAD commit ID
     suspend fun getHeadCommitId(): String?

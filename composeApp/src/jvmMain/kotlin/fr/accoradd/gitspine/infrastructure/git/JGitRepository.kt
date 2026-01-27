@@ -6,8 +6,11 @@ import fr.accoradd.gitspine.domain.repository.GitRepository
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.revwalk.RevSort
 import org.eclipse.jgit.revwalk.RevWalk
+import org.eclipse.jgit.revwalk.filter.CommitTimeRevFilter
 import java.time.Instant
+import java.util.Date
 
 class JGitRepository(
     private val session: GitSession,
@@ -27,23 +30,48 @@ class JGitRepository(
         repository.resolve("HEAD")?.name
     }
 
-    override fun getCommits(skip: Int, limit: Int): Flow<List<Commit>> = flow {
+    override fun getCommits(
+        beforeTimestamp: Instant?,
+        excludeCommitId: String?,
+        limit: Int
+    ): Flow<List<Commit>> = flow {
         val repository = repoState?.repository ?: run {
             emit(emptyList())
             return@flow
         }
 
         val commits = mutableListOf<Commit>()
-        val git = Git(repository)
 
-        try {
-            val logs = git.log().setMaxCount(skip + limit).call()
+        RevWalk(repository).use { walk ->
+            try {
+                // Tri par date (plus récent d'abord)
+                walk.sort(RevSort.COMMIT_TIME_DESC)
 
-            // Skip the first 'skip' commits and take 'limit' commits
-            logs.asSequence()
-                .drop(skip)
-                .take(limit)
-                .forEach { revCommit ->
+                // Filtre par timestamp pour sauter directement aux commits pertinents
+                if (beforeTimestamp != null) {
+                    // +1 seconde car le filtre est inclusif et on veut exclusif
+                    walk.revFilter = CommitTimeRevFilter.before(beforeTimestamp.plusSeconds(1))
+                }
+
+                // Ajouter tous les refs comme points de départ
+                repository.refDatabase.refs.forEach { ref ->
+                    try {
+                        val objectId = ref.objectId ?: ref.leaf?.objectId
+                        if (objectId != null) {
+                            walk.markStart(walk.parseCommit(objectId))
+                        }
+                    } catch (_: Exception) {
+                        // Ignorer les refs qui ne pointent pas vers des commits
+                    }
+                }
+
+                var count = 0
+                for (revCommit in walk) {
+                    // Exclure le commit spécifié (évite les doublons si même timestamp)
+                    if (revCommit.name == excludeCommitId) continue
+
+                    if (count >= limit) break
+
                     commits.add(
                         Commit(
                             id = revCommit.name,
@@ -57,10 +85,11 @@ class JGitRepository(
                             parents = revCommit.parents.map { it.name }
                         )
                     )
+                    count++
                 }
-        } catch (e: Exception) {
-            // Log error but return empty list
-            println("Error loading commits: ${e.message}")
+            } catch (e: Exception) {
+                println("Error loading commits: ${e.message}")
+            }
         }
 
         emit(commits)

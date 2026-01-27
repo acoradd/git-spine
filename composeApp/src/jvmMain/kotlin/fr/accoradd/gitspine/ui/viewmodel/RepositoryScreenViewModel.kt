@@ -145,12 +145,19 @@ class RepositoryScreenViewModel(
         if (isLoadingCommit) return
         isLoadingCommit = true
 
-        val skip = if (reset) 0 else _commits.value.size
+        val lastCommit = if (reset) null else _commits.value.lastOrNull()
+        if (reset) {
+            _commits.value = emptyList()
+        }
         val limit = 100
 
         viewModelScope.launch {
             try {
-                gitRepository.getCommits(skip = skip, limit = limit).collect { loadedCommits ->
+                gitRepository.getCommits(
+                    beforeTimestamp = lastCommit?.timestamp,
+                    excludeCommitId = lastCommit?.id,
+                    limit = limit
+                ).collect { loadedCommits ->
                     _commits.value += loadedCommits
                     _hasMoreCommits.value = loadedCommits.size == limit
                     isLoadingCommit = false
