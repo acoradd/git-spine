@@ -1,39 +1,36 @@
 package fr.accoradd.gitspine.ui.components.repository
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import java.awt.Cursor
-import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.Divider
-import org.jetbrains.jewel.ui.Orientation
-import org.jetbrains.jewel.ui.component.VerticalScrollbar
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
-import fr.accoradd.gitspine.ui.theme.jewelColors
+import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.VerticalScrollbar
+import org.jetbrains.jewel.window.defaultTitleBarStyle
+import java.awt.Cursor
 
-data class CommitColumn(
+data class TableColumn(
     val id: String,
     val title: String,
     val defaultWidth: Float,
-    val minWidth: Float = 0.05f
+    val minWidth: Float = 0.05f,
+    val resizable: Boolean = true
 )
 
 data class CommitData(
@@ -55,11 +52,10 @@ fun CommitList(
 ) {
     val columns = remember {
         listOf(
-            CommitColumn(id = "graph", title = "Graph", defaultWidth = 0.1f),
-            CommitColumn(id = "hash", title = "Hash", defaultWidth = 0.1f),
-            CommitColumn(id = "message", title = "Message", defaultWidth = 0.4f),
-            CommitColumn(id = "author", title = "Author", defaultWidth = 0.2f),
-            CommitColumn(id = "date", title = "Date", defaultWidth = 0.2f)
+            TableColumn(id = "branch", title = "Branche", defaultWidth = 0.1f, resizable = false),
+            TableColumn(id = "graph", title = "Graph", defaultWidth = 0.3f),
+            TableColumn(id = "message", title = "Message", defaultWidth = 0.4f),
+            TableColumn(id = "date", title = "Date", defaultWidth = 0.2f)
         )
     }
 
@@ -94,8 +90,6 @@ fun CommitList(
             }
         )
 
-        Divider(orientation = Orientation.Horizontal)
-
         // Commit list with scrollbar
         Box(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
@@ -107,9 +101,11 @@ fun CommitList(
                         commit = commit,
                         columns = columns,
                         columnWidths = columnWidths,
-                        onClick = { onCommitClick(commit) }
+                        onClick = { onCommitClick(commit) },
+                        onWidthChanged = { columnId, newWidth ->
+                            columnWidths[columnId] = newWidth
+                        }
                     )
-                    Divider(orientation = Orientation.Horizontal)
                 }
 
                 // Loading indicator at the end if there's more
@@ -141,15 +137,15 @@ fun CommitList(
 
 @Composable
 private fun ResizableColumnsHeader(
-    columns: List<CommitColumn>,
+    columns: List<TableColumn>,
     columnWidths: Map<String, Float>,
     onWidthChanged: (String, Float) -> Unit
 ) {
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .height(30.dp) // Hauteur réduite pour style IntelliJ
-            .background(jewelColors.grey(3))
+            .height(30.dp)
+            .border(1.dp, JewelTheme.defaultTitleBarStyle.colors.background)
     ) {
         val totalWidth = constraints.maxWidth.toFloat()
 
@@ -166,138 +162,182 @@ private fun ResizableColumnsHeader(
                         .weight(width)
                         .fillMaxHeight()
                         .padding(horizontal = 12.dp),
-                    contentAlignment = Alignment.CenterStart
+                    contentAlignment = if (index == columns.size - 1) Alignment.CenterEnd else Alignment.CenterStart
                 ) {
                     Text(
                         text = column.title,
-                        color = jewelColors.grey(8),
+                        color = JewelTheme.globalColors.text.disabled,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                // Divider (except after last column)
-                if (index < columns.size - 1) {
-                    ColumnDivider(
-                        onDrag = { delta ->
-                            val currentColumn = columns[index]
-                            val nextColumn = columns[index + 1]
-                            val currentWidth = columnWidths[currentColumn.id] ?: currentColumn.defaultWidth
-                            val nextWidth = columnWidths[nextColumn.id] ?: nextColumn.defaultWidth
-
-                            val deltaRatio = delta / totalWidth
-                            val newCurrentWidth = (currentWidth + deltaRatio).coerceAtLeast(currentColumn.minWidth)
-                            val newNextWidth = (nextWidth - deltaRatio).coerceAtLeast(nextColumn.minWidth)
-
-                            // Only update if both constraints are satisfied
-                            if (newCurrentWidth >= currentColumn.minWidth && newNextWidth >= nextColumn.minWidth) {
-                                onWidthChanged(currentColumn.id, newCurrentWidth)
-                                onWidthChanged(nextColumn.id, newNextWidth)
-                            }
-                        }
-                    )
-                }
+                ResizeColumnsDivider(index, columns, columnWidths, totalWidth, column, onWidthChanged)
             }
         }
     }
 }
 
 @Composable
-private fun ColumnDivider(
-    onDrag: (delta: Float) -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .width(4.dp)
-            .fillMaxHeight()
-            .pointerHoverIcon(PointerIcon(Cursor(Cursor.E_RESIZE_CURSOR)))
-            .pointerInput(Unit) {
-                detectDragGestures { change, dragAmount ->
-                    change.consume()
-                    onDrag(dragAmount.x)
-                }
-            }
-    )
-}
-
-@Composable
 private fun CommitRow(
     commit: CommitData,
-    columns: List<CommitColumn>,
+    columns: List<TableColumn>,
     columnWidths: Map<String, Float>,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onWidthChanged: (String, Float) -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val isHovered by interactionSource.collectIsHoveredAsState()
-
-    Row(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .height(28.dp) // Hauteur réduite pour style IntelliJ
+            .height(28.dp)
             .background(
                 when {
-                    commit.isSelected -> jewelColors.blue(2)
-                    isHovered -> jewelColors.grey(3)
-                    else -> jewelColors.grey(1)
+                    commit.isSelected -> JewelTheme.defaultTitleBarStyle.colors.titlePaneButtonHoveredBackground
+                    else -> Color.Transparent
                 }
             )
             .clickable(onClick = onClick)
-            .hoverable(interactionSource),
-        verticalAlignment = Alignment.CenterVertically
+            .hoverable(interactionSource)
     ) {
-        columns.forEach { column ->
-            val width = columnWidths[column.id] ?: column.defaultWidth
+        val totalWidth = constraints.maxWidth.toFloat()
 
-            Box(
-                modifier = Modifier
-                    .weight(width)
-                    .fillMaxHeight()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 12.dp),
-                contentAlignment = Alignment.CenterStart
-            ) {
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            columns.forEachIndexed { index, column ->
+                val width = columnWidths[column.id] ?: column.defaultWidth
+
+                Box(
+                    modifier = Modifier
+                        .weight(width)
+                        .fillMaxHeight()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 12.dp),
+                    contentAlignment = if (index == columns.size - 1) Alignment.CenterEnd else Alignment.CenterStart
+                ) {
                     when (column.id) {
+                        "branch" -> {
+                            Text(text = "BRANCH")
+                        }
+
                         "graph" -> {
-                            // Placeholder for graph visualization
                             Text(
-                                text = "●",
-                                                    color = jewelColors.blue(4)
+                                text = "●"
                             )
                         }
+
                         "hash" -> {
                             Text(
                                 text = commit.shortHash,
-                                color = jewelColors.grey(8),
                                 maxLines = 1,
                                 overflow = TextOverflow.Visible
                             )
                         }
+
                         "message" -> {
                             Text(
                                 text = commit.message,
-                                                    color = if (commit.isSelected) jewelColors.grey(1) else jewelColors.grey(12),
                                 maxLines = 1,
                                 overflow = TextOverflow.Visible
                             )
                         }
-                        "author" -> {
-                            Text(
-                                text = commit.author,
-                                                    color = if (commit.isSelected) jewelColors.grey(1) else jewelColors.grey(8),
-                                maxLines = 1,
-                                overflow = TextOverflow.Visible
-                            )
-                        }
+
                         "date" -> {
                             Text(
                                 text = commit.date,
-                                                    color = if (commit.isSelected) jewelColors.grey(1) else jewelColors.grey(8),
                                 maxLines = 1,
                                 overflow = TextOverflow.Visible
                             )
                         }
                     }
                 }
+
+                ResizeColumnsDivider(index, columns, columnWidths, totalWidth, column, onWidthChanged)
             }
         }
+    }
+
+
+}
+
+
+@Composable
+private fun ResizeColumnsDivider(
+    index: Int,
+    columns: List<TableColumn>,
+    columnWidths: Map<String, Float>,
+    totalWidth: Float,
+    column: TableColumn,
+    onWidthChanged: (String, Float) -> Unit
+) {
+    var columnWidthsAtStartOfDrag = columnWidths.toMap()
+    val currentColumn = columns[index]
+    val nextColumn = columns.getOrNull(index + 1)
+    if (index < columns.size - 1) {
+        ColumnDivider(
+            resizable = column.resizable,
+            onDragStart = { columnWidthsAtStartOfDrag = columnWidths.toMap() },
+            onPositionChange = { deltaX ->
+
+                val dragRatio = deltaX / totalWidth
+
+                val widthAtStartOfDrag = columnWidthsAtStartOfDrag[column.id] ?: column.defaultWidth
+                val ratio = widthAtStartOfDrag + dragRatio
+                val newCurrentWidth = ratio.coerceAtLeast(currentColumn.minWidth)
+                val dragRatioFinal = newCurrentWidth - widthAtStartOfDrag
+
+                if (nextColumn != null) {
+                    val nextColumnWidthAtStartOfDrag = columnWidthsAtStartOfDrag[nextColumn.id] ?: column.defaultWidth
+                    val nextColumnRatio = nextColumnWidthAtStartOfDrag - dragRatioFinal
+                    val newNextWidth = nextColumnRatio.coerceAtLeast(nextColumn.minWidth)
+
+                    if (newCurrentWidth >= currentColumn.minWidth && nextColumnRatio >= nextColumn.minWidth) {
+                        onWidthChanged(currentColumn.id, newCurrentWidth)
+                        onWidthChanged(nextColumn.id, newNextWidth)
+                    }
+                } else if (newCurrentWidth >= currentColumn.minWidth) {
+                    onWidthChanged(currentColumn.id, newCurrentWidth)
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun ColumnDivider(
+    onDragStart: () -> Unit,
+    onPositionChange: (absoluteX: Float) -> Unit,
+    resizable: Boolean = true
+) {
+
+    val modifier = if (resizable) Modifier
+        .pointerHoverIcon(PointerIcon(Cursor(Cursor.E_RESIZE_CURSOR)))
+        .pointerInput(Unit) {
+            awaitEachGesture {
+                val down = awaitFirstDown()
+                onDragStart()
+                var totalAccumulatedDelta = 0f
+                drag(down.id) { change ->
+                    val dragAmount = change.position.x - change.previousPosition.x
+                    totalAccumulatedDelta += dragAmount
+                    onPositionChange(totalAccumulatedDelta)
+                    change.consume()
+                }
+            }
+        } else Modifier
+
+    Row(
+        modifier = modifier.width(4.dp).fillMaxHeight(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .background(JewelTheme.defaultTitleBarStyle.colors.background)
+                .fillMaxHeight()
+                .width(1.dp)
+        )
+    }
 }

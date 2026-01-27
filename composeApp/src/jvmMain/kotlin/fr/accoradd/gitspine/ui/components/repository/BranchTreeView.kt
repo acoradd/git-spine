@@ -166,7 +166,7 @@ private fun LeafItem(
                 .clickable(onClick = onClick)
                 .hoverable(interactionSource)
                 .horizontalScroll(rememberScrollState())
-                .padding(start = (level * 16 + 32).dp, top = 2.dp, bottom = 2.dp),
+                .padding(start = (level * 16 + 28).dp, top = 2.dp, bottom = 2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
 

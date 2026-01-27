@@ -66,7 +66,7 @@ val appModule = module {
     single { ProjectViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     single { AppViewModel(get(), get(), get()) }
     viewModel { WelcomeScreenViewModel(get()) }
-    viewModel { RepositoryScreenViewModel(get()) }
+    viewModel { RepositoryScreenViewModel(get(), get()) }
     viewModel { GraphViewModel(get()) }
     viewModel { WorkspaceViewModel(get(), get(), get(), get(), get(), get(), get()) }
 }

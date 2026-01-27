@@ -6,9 +6,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import fr.accoradd.gitspine.domain.model.Branch
 import fr.accoradd.gitspine.domain.model.Commit
-import fr.accoradd.gitspine.domain.repository.GitRepository
+import fr.accoradd.gitspine.domain.model.CommitOrWip
 import fr.accoradd.gitspine.ui.components.common.ThreeColumnResizablePanes
 import fr.accoradd.gitspine.ui.components.repository.CommitData
 import fr.accoradd.gitspine.ui.components.repository.CommitList
@@ -17,9 +16,6 @@ import fr.accoradd.gitspine.ui.components.workspace.WorkspaceChangesPanel
 import fr.accoradd.gitspine.ui.theme.jewelColors
 import fr.accoradd.gitspine.ui.viewmodel.RepositoryScreenViewModel
 import fr.accoradd.gitspine.ui.viewmodel.WorkspaceViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
@@ -29,171 +25,49 @@ import org.koin.compose.koinInject
 import java.nio.file.Path
 import java.time.format.DateTimeFormatter
 
-// Sealed class to represent either a commit or WIP
-sealed class CommitOrWip {
-    data object Wip : CommitOrWip()
-    data class CommitItem(val commit: Commit) : CommitOrWip()
-}
 
 @Composable
 fun RepositoryScreen(
     path: String
 ) {
-    val gitRepository: GitRepository = koinInject()
     val workspaceViewModel: WorkspaceViewModel = koinInject()
     val repositoryScreenViewModel: RepositoryScreenViewModel = koinInject()
-    val scope = rememberCoroutineScope()
 
     val workspaceState by workspaceViewModel.state.collectAsState()
 
 
-    // Data states
-    var localBranches by remember { mutableStateOf<List<Branch>>(emptyList()) }
-    var remoteBranches by remember { mutableStateOf<List<Branch>>(emptyList()) }
-    var commits by remember { mutableStateOf<List<Commit>>(emptyList()) }
-    var tags by remember { mutableStateOf<List<String>>(emptyList()) }
-    var selectedItem by remember { mutableStateOf<CommitOrWip?>(null) }
+    val localBranches = repositoryScreenViewModel.localBranches.collectAsState()
+    val remoteBranches = repositoryScreenViewModel.remoteBranches.collectAsState()
+    val commits = repositoryScreenViewModel.commits.collectAsState()
+    val tags = repositoryScreenViewModel.tags.collectAsState()
 
-    // Pagination & Search states
-    var isLoadingMoreCommits by remember { mutableStateOf(false) }
-    var hasMoreCommits by remember { mutableStateOf(true) }
-
-    var searchQuery by remember { mutableStateOf("") }
-
-    var hasMoreRemoteBranches by remember { mutableStateOf(true) }
-    var hasMoreTags by remember { mutableStateOf(true) }
-
-    var isLoadingLocalBranches by remember { mutableStateOf(false) }
-    var isLoadingRemoteBranches by remember { mutableStateOf(false) }
-    var isLoadingTags by remember { mutableStateOf(false) }
-
-    fun loadLocalBranches() {
-        if (isLoadingLocalBranches) return
-        isLoadingLocalBranches = true
-
-        scope.launch {
-            try {
-                gitRepository.getLocalBranches(search = searchQuery).collect { loadedBranches ->
-                    localBranches = loadedBranches
-                    isLoadingLocalBranches = false
-                }
-            } catch (e: Exception) {
-                println("Error loading local branches: ${e.message}")
-                isLoadingLocalBranches = false
-            }
-        }
-    }
-
-    fun loadRemoteBranches(reset: Boolean = false) {
-        if (isLoadingRemoteBranches || (!reset && !hasMoreRemoteBranches)) return
-
-        isLoadingRemoteBranches = true
-        val skip = if (reset) 0 else remoteBranches.size
-        val limit = 100
-
-        scope.launch {
-            try {
-                gitRepository.getRemoteBranches(skip = skip, limit = limit, search = searchQuery)
-                    .collect { loadedBranches ->
-                        if (reset) {
-                            remoteBranches = loadedBranches
-                        } else {
-                            remoteBranches = remoteBranches + loadedBranches
-                        }
-                        hasMoreRemoteBranches = loadedBranches.size == limit
-                        isLoadingRemoteBranches = false
-                    }
-            } catch (e: Exception) {
-                println("Error loading remote branches: ${e.message}")
-                isLoadingRemoteBranches = false
-            }
-        }
-    }
-
-    fun loadTags(reset: Boolean = false) {
-        if (isLoadingTags || (!reset && !hasMoreTags)) return
-
-        isLoadingTags = true
-        val skip = if (reset) 0 else tags.size
-        val limit = 100
-
-        scope.launch {
-            try {
-                gitRepository.getTags(skip = skip, limit = limit, search = searchQuery).collect { loadedTags ->
-                    if (reset) {
-                        tags = loadedTags
-                    } else {
-                        tags = tags + loadedTags
-                    }
-                    hasMoreTags = loadedTags.size == limit
-                    isLoadingTags = false
-                }
-            } catch (e: Exception) {
-                println("Error loading tags: ${e.message}")
-                isLoadingTags = false
-            }
-        }
-    }
-
-    // Function to load more commits
-    fun loadMoreCommits() {
-        if (isLoadingMoreCommits || !hasMoreCommits) return
-
-        isLoadingMoreCommits = true
-        CoroutineScope(Dispatchers.Main).launch {
-            try {
-                gitRepository.getCommits(skip = commits.size, limit = 100).collect { loadedCommits ->
-                    commits = commits + loadedCommits
-                    hasMoreCommits = loadedCommits.size == 100
-                    isLoadingMoreCommits = false
-                }
-            } catch (e: Exception) {
-                println("Error loading more commits: ${e.message}")
-                isLoadingMoreCommits = false
-            }
-        }
-    }
+    val selectedItem = repositoryScreenViewModel.commit.collectAsState()
+    val hasMoreCommits = repositoryScreenViewModel.hasMoreCommits.collectAsState()
 
     LaunchedEffect(path) {
         repositoryScreenViewModel.open(Path.of(path))
         workspaceViewModel.loadStatus()
-        try {
-            gitRepository.getCommits(skip = 0, limit = 100).collect { loadedCommits ->
-                commits = loadedCommits
-                hasMoreCommits = loadedCommits.size == 100
-                selectedItem = if (workspaceViewModel.state.value.status.hasChanges) {
-                    CommitOrWip.Wip
-                } else if (loadedCommits.isNotEmpty()) {
-                    CommitOrWip.CommitItem(loadedCommits.first())
-                } else {
-                    null
-                }
-            }
-        } catch (e: Exception) {
-            println("Error loading commits: ${e.message}")
-        }
-
-        loadLocalBranches()
-        loadRemoteBranches(reset = true)
-        loadTags(reset = true)
     }
 
     DisposableEffect(path) {
         onDispose {
             repositoryScreenViewModel.close(Path.of(path))
+            workspaceViewModel.unloadStatus()
         }
     }
 
     // Auto-select WIP when changes appear
     LaunchedEffect(workspaceState.status.hasChanges) {
-        if (workspaceState.status.hasChanges && selectedItem == null) {
-            selectedItem = CommitOrWip.Wip
+        if (workspaceState.status.hasChanges && selectedItem.value == null) {
+            repositoryScreenViewModel.setCommit(CommitOrWip.Wip)
         } else if (!workspaceState.status.hasChanges && selectedItem is CommitOrWip.Wip) {
-            selectedItem = if (commits.isNotEmpty()) {
-                CommitOrWip.CommitItem(commits.first())
-            } else {
-                null
-            }
+            repositoryScreenViewModel.setCommit(
+                if (commits.value.isNotEmpty()) {
+                    CommitOrWip.CommitItem(commits.value.first())
+                } else {
+                    null
+                }
+            )
         }
     }
 
@@ -207,45 +81,39 @@ fun RepositoryScreen(
             initialRightWidth = 0.25f,
             leftContent = {
                 RepositoryLeftPanel(
-                    localBranches = localBranches,
-                    remoteBranches = remoteBranches,
-                    tags = tags,
-                    hasMoreRemoteBranches = hasMoreRemoteBranches,
-                    hasMoreTags = hasMoreTags,
+                    repositoryScreenViewModel,
+                    localBranches = localBranches.value,
+                    remoteBranches = remoteBranches.value,
+                    tags = tags.value,
                     onBranchClick = { /* ... */ },
                     onTagClick = { /* ... */ },
-                    onLoadLocalBranches = ::loadLocalBranches,
-                    onLocalBranchSearch = { query ->
-                        searchQuery = query
-                        loadLocalBranches()
+                    onSearch = { query, localExpanded, remoteExpanded, tagsExpanded ->
+                        repositoryScreenViewModel.setSearchQuery(query)
+                        if (localExpanded) {
+                            repositoryScreenViewModel.loadLocalBranches()
+                        }
+                        if (remoteExpanded) {
+                            repositoryScreenViewModel.loadRemoteBranches(true)
+                        }
+                        if (tagsExpanded) {
+                            repositoryScreenViewModel.loadTags(true)
+                        }
                     },
-                    onLoadRemoteBranches = { loadRemoteBranches(reset = true) },
-                    onLoadMoreRemoteBranches = { loadRemoteBranches(reset = false) },
-                    onRemoteBranchSearch = { query ->
-                        searchQuery = query
-                        loadRemoteBranches(reset = true)
-                    },
-                    onLoadTags = { loadTags(reset = true) },
-                    onLoadMoreTags = { loadTags(reset = false) },
-                    onTagSearch = { query ->
-                        searchQuery = query
-                        loadTags(reset = true)
-                    }
                 )
             },
             centerContent = {
                 CenterPanel(
-                    commits = commits,
+                    commits = commits.value,
                     workspaceStatus = workspaceState.status,
-                    selectedItem = selectedItem,
-                    onItemClick = { item -> selectedItem = item },
-                    onLoadMore = ::loadMoreCommits,
-                    hasMore = hasMoreCommits && !isLoadingMoreCommits
+                    selectedItem = selectedItem.value,
+                    onItemClick = { repositoryScreenViewModel.onClickCommit(it) },
+                    onLoadMore = { repositoryScreenViewModel.loadCommits() },
+                    hasMore = hasMoreCommits.value
                 )
             },
             rightContent = {
                 RightPanel(
-                    selectedItem = selectedItem,
+                    selectedItem = selectedItem.value,
                     workspaceStatus = workspaceState.status,
                     onStageFile = { path -> workspaceViewModel.stageFile(path) },
                     onUnstageFile = { path -> workspaceViewModel.unstageFile(path) },
@@ -270,7 +138,7 @@ private fun CenterPanel(
     onLoadMore: () -> Unit,
     hasMore: Boolean
 ) {
-    val dateFormatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm") }
+    val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm") }
 
     val commitDataList = buildList {
         if (workspaceStatus.hasChanges) {

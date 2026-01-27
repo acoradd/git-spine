@@ -49,6 +49,10 @@ class WorkspaceViewModel(
         }
     }
 
+    fun unloadStatus() {
+        _state.update { it.copy(status = WorkspaceStatus()) }
+    }
+
     fun stageFile(path: String) = executeOperation { stageFileUseCase(path) }
 
     fun unstageFile(path: String) = executeOperation { unstageFileUseCase(path) }

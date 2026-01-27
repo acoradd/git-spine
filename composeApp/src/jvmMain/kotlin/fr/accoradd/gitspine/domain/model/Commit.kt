@@ -15,3 +15,8 @@ data class Author(
     val name: String,
     val email: String
 )
+
+sealed class CommitOrWip {
+    data object Wip : CommitOrWip()
+    data class CommitItem(val commit: Commit) : CommitOrWip()
+}

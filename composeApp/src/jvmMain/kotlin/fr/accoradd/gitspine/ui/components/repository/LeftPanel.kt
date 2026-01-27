@@ -26,6 +26,7 @@ import fr.accoradd.gitspine.ui.components.common.HorizontalDivider
 import fr.accoradd.gitspine.ui.components.common.SectionHeader
 import fr.accoradd.gitspine.ui.components.common.SimpleTextField
 import fr.accoradd.gitspine.ui.theme.jewelColors
+import fr.accoradd.gitspine.ui.viewmodel.RepositoryScreenViewModel
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
@@ -33,29 +34,17 @@ import org.jetbrains.jewel.window.defaultTitleBarStyle
 
 @Composable
 fun RepositoryLeftPanel(
+    repositoryScreenViewModel: RepositoryScreenViewModel,
 
     localBranches: List<Branch>,
     remoteBranches: List<Branch>,
     tags: List<String> = emptyList(),
 
-    // Pagination states
-    hasMoreRemoteBranches: Boolean = false,
-    hasMoreTags: Boolean = false,
-
     // Callbacks
     onBranchClick: (String) -> Unit = {},
     onTagClick: (String) -> Unit = {},
 
-    onLoadLocalBranches: () -> Unit = {},
-    onLocalBranchSearch: (String) -> Unit = {},
-
-    onLoadRemoteBranches: () -> Unit = {},
-    onLoadMoreRemoteBranches: () -> Unit = {},
-    onRemoteBranchSearch: (String) -> Unit = {},
-
-    onLoadTags: () -> Unit = {},
-    onLoadMoreTags: () -> Unit = {},
-    onTagSearch: (String) -> Unit = {},
+    onSearch: (String, Boolean, Boolean, Boolean) -> Unit,
 
     modifier: Modifier = Modifier
 ) {
@@ -69,48 +58,76 @@ fun RepositoryLeftPanel(
     val selectedBranch = localBranches.find { it.isHead }?.name ?: remoteBranches.find { it.isHead }?.name
 
     // Expansion states
+    var localExpanded by remember { mutableStateOf(true) }
     var remoteExpanded by remember { mutableStateOf(false) }
     var tagsExpanded by remember { mutableStateOf(false) }
+
+    val hasMoreRemoteBranches = repositoryScreenViewModel.hasMoreRemoteBranch.collectAsState()
+    val hasMoreTags = repositoryScreenViewModel.hasMoreTags.collectAsState()
 
     Column(
         modifier = modifier.fillMaxSize()
     ) {
 
         SearchRef(
-            onLocalBranchSearch = onLocalBranchSearch,
-            onRemoteBranchSearch = onRemoteBranchSearch,
-            onTagSearch = onTagSearch
+            onSearch = {
+                onSearch(it, localExpanded, remoteExpanded, tagsExpanded)
+            }
         )
 
         SectionBranch(
             "Local",
-            true,
-            localBranches,
-            onLoadLocalBranches,
-            localBranchesNames,
-            selectedBranch,
-            onBranchClick
+            expanded = localExpanded,
+            toggleExpanded = {
+                localExpanded = !localExpanded
+
+                if (localExpanded) {
+                    repositoryScreenViewModel.loadLocalBranches()
+                } else {
+                    repositoryScreenViewModel.clearLocalBranches()
+                }
+            },
+            branches = localBranches,
+            branchesNamesByOrigin = localBranchesNames,
+            selectedBranch = selectedBranch,
+            onBranchClick = onBranchClick
         )
 
         SectionBranch(
             "Remote",
-            false,
-            localBranches,
-            onLoadRemoteBranches,
-            remoteBranchesMap,
-            selectedBranch,
-            onBranchClick,
-            hasMoreRemoteBranches,
-            onLoadMoreRemoteBranches
+            expanded = remoteExpanded,
+            toggleExpanded = {
+                remoteExpanded = !remoteExpanded
+
+                if (remoteExpanded) {
+                    repositoryScreenViewModel.loadRemoteBranches(true)
+                } else {
+                    repositoryScreenViewModel.clearRemoteBranches()
+                }
+            },
+            branches = remoteBranches,
+            branchesNamesByOrigin = remoteBranchesMap,
+            selectedBranch = selectedBranch,
+            onBranchClick = onBranchClick,
+            hasMoreBranches = hasMoreRemoteBranches.value,
+            onLoadMoreBranches = { repositoryScreenViewModel.loadRemoteBranches() }
         )
 
         SectionTag(
-            tagsExpanded,
-            tags,
-            onLoadTags,
-            onTagClick,
-            hasMoreTags,
-            onLoadMoreTags
+            expanded = tagsExpanded,
+            toggleExpanded = {
+                tagsExpanded = !tagsExpanded
+
+                if (tagsExpanded) {
+                    repositoryScreenViewModel.loadTags(true)
+                } else {
+                    repositoryScreenViewModel.clearTags()
+                }
+            },
+            tags = tags,
+            onTagClick = onTagClick,
+            hasMoreTags = hasMoreTags.value,
+            onLoadMoreTags = { repositoryScreenViewModel.loadTags() }
         )
     }
 }
@@ -118,16 +135,15 @@ fun RepositoryLeftPanel(
 @Composable
 private fun ColumnScope.SectionBranch(
     title: String,
-    expandedByDefault: Boolean,
+    expanded: Boolean,
+    toggleExpanded: () -> Unit,
     branches: List<Branch>,
-    onLoadBranches: () -> Unit,
     branchesNamesByOrigin: Map<String, List<String>>,
     selectedBranch: String?,
     onBranchClick: (String) -> Unit,
     hasMoreBranches: Boolean = false,
     onLoadMoreBranches: () -> Unit = {},
 ) {
-    var expanded by remember { mutableStateOf(expandedByDefault) }
     var expandedFolders by remember { mutableStateOf(emptySet<String>()) }
 
     val onToggleFolder = { path: String ->
@@ -139,7 +155,7 @@ private fun ColumnScope.SectionBranch(
     }
 
     LaunchedEffect(selectedBranch) {
-        if (expandedByDefault) {
+        if (expanded) {
             selectedBranch?.let {
                 val parts = it.split('/')
                 if (parts.size > 1) {
@@ -155,19 +171,14 @@ private fun ColumnScope.SectionBranch(
     SectionHeader(
         title = title,
         expanded = expanded,
-        onToggle = {
-            expanded = !expanded
-            if (expanded && branches.isEmpty()) {
-                onLoadBranches()
-            }
-        }
+        onToggle = { toggleExpanded() }
     )
 
     if (expanded) {
         Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
             LazyScrollableContent {
                 if (branches.isEmpty()) {
-                    item { EmptyState("Aucune branche locale") }
+                    item { EmptyState("Aucune branche") }
                 } else {
                     branchesNamesByOrigin.forEach { (origin, branches) ->
                         if (origin.isNotEmpty()) {
@@ -198,23 +209,17 @@ private fun ColumnScope.SectionBranch(
 
 @Composable
 private fun ColumnScope.SectionTag(
-    expandedByDefault: Boolean,
+    expanded: Boolean,
+    toggleExpanded: () -> Unit,
     tags: List<String>,
-    onLoadTags: () -> Unit,
     onTagClick: (String) -> Unit,
     hasMoreTags: Boolean,
     onLoadMoreTags: () -> Unit
 ) {
-    var expanded by remember { mutableStateOf(expandedByDefault) }
     SectionHeader(
         title = "Tags",
         expanded = expanded,
-        onToggle = {
-            expanded = !expanded
-            if (expanded && tags.isEmpty()) {
-                onLoadTags()
-            }
-        }
+        onToggle = { toggleExpanded() }
     )
 
     if (expanded) {
@@ -240,9 +245,7 @@ private fun ColumnScope.SectionTag(
 
 @Composable
 private fun SearchRef(
-    onLocalBranchSearch: (String) -> Unit,
-    onRemoteBranchSearch: (String) -> Unit,
-    onTagSearch: (String) -> Unit
+    onSearch: (String) -> Unit
 ) {
     val searchState = rememberTextFieldState("")
 
@@ -276,9 +279,7 @@ private fun SearchRef(
     HorizontalDivider()
 
     LaunchedEffect(searchState.text) {
-        onLocalBranchSearch(searchState.text.toString())
-        onRemoteBranchSearch(searchState.text.toString())
-        onTagSearch(searchState.text.toString())
+        onSearch(searchState.text.toString())
     }
 }
 
@@ -322,7 +323,7 @@ private fun RemoteHeader(remoteName: String) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
     ) {
-        Text(text = remoteName)
+        Text(text = remoteName, color = JewelTheme.globalColors.text.info)
         Spacer(modifier = Modifier.width(8.dp))
     }
 }
@@ -375,7 +376,7 @@ private fun EmptyState(message: String) {
     ) {
         Text(
             text = message,
-            color = jewelColors.grey(8)
+            color = JewelTheme.globalColors.text.info
         )
     }
 }

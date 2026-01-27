@@ -55,14 +55,18 @@ class GitSession(
         return GitRepositoryState(repository, fileWatcher, ignoreRules)
     }
 
-    fun close(repoPath: Path) {
+    fun close(repoPath: Path?) {
         _activeRepository.value?.let {
-            val gitPath = if (repoPath.fileName.toString() != ".git") {
-                repoPath.resolve(".git")
-            } else repoPath
-            if (it.repository.directory.toString() == gitPath.toString()) {
+            if (repoPath == null) {
                 close(it)
-                _activeRepository.value = null
+            } else {
+                val gitPath = if (repoPath.fileName.toString() != ".git") {
+                    repoPath.resolve(".git")
+                } else repoPath
+                if (it.repository.directory.toString() == gitPath.toString()) {
+                    close(it)
+                    _activeRepository.value = null
+                }
             }
         }
     }
