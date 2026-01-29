@@ -16,11 +16,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fr.accoradd.gitspine.domain.model.GraphResult
+import fr.accoradd.gitspine.ui.components.graph.CELL_SIZE
 import fr.accoradd.gitspine.ui.components.graph.GraphCell
 import fr.accoradd.gitspine.ui.components.graph.getEdgesForCell
+import fr.accoradd.gitspine.ui.theme.graphColors
+import fr.accoradd.gitspine.ui.viewmodel.GravatarViewModel
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
@@ -33,18 +37,26 @@ data class TableColumn(
     val title: String,
     val defaultWidth: Float,
     val minWidth: Float = 0.05f,
-    val resizable: Boolean = true
+    val maxWidth: Float? = null,
+    val resizable: Boolean = true,
+)
+
+data class CommitDataAuthor(
+    val name: String,
+    val email: String
 )
 
 data class CommitData(
     val hash: String,
     val shortHash: String,
     val message: String,
-    val author: String,
+    val author: CommitDataAuthor?,
     val date: String,
     val isSelected: Boolean = false,
     val row: Int = 0
 )
+
+data class MinMax(val min: Float, val max: Float? = null)
 
 @Composable
 fun CommitList(
@@ -53,91 +65,130 @@ fun CommitList(
     onCommitClick: (CommitData) -> Unit = {},
     onLoadMore: () -> Unit = {},
     hasMore: Boolean = false,
-    modifier: Modifier = Modifier
+    gravatarViewModel: GravatarViewModel
 ) {
-    val columns = remember {
-        listOf(
-            TableColumn(id = "branch", title = "Ref", defaultWidth = 0.1f, resizable = false),
-            TableColumn(id = "graph", title = "Graph", defaultWidth = 0.3f),
-            TableColumn(id = "message", title = "Message", defaultWidth = 0.4f),
-            TableColumn(id = "date", title = "Date", defaultWidth = 0.2f)
-        )
-    }
+    val density = LocalDensity.current
 
-    val columnWidths = remember {
-        mutableStateMapOf<String, Float>().apply {
-            columns.forEach { put(it.id, it.defaultWidth) }
-        }
-    }
-
-    val listState = rememberLazyListState()
-
-    // Détecter quand on arrive vers la fin de la liste
-    LaunchedEffect(listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index) {
-        val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-        val totalItems = listState.layoutInfo.totalItemsCount
-
-        // Charger plus quand on est à 10 éléments de la fin
-        if (hasMore && totalItems > 0 && lastVisibleIndex >= totalItems - 10) {
-            onLoadMore()
-        }
-    }
-
-    Column(
-        modifier = modifier.fillMaxSize()
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxSize()
     ) {
-        // Header
-        ResizableColumnsHeader(
-            columns = columns,
-            columnWidths = columnWidths,
-            onWidthChanged = { columnId, newWidth ->
-                columnWidths[columnId] = newWidth
+        val totalWidth = constraints.maxWidth.toFloat()
+
+        var columns by remember {
+            mutableStateOf(
+                listOf(
+                    TableColumn(id = "branch", title = "Ref", defaultWidth = 0.1f, resizable = false),
+                    TableColumn(
+                        id = "graph",
+                        title = "Graph",
+                        defaultWidth = 0.3f,
+                        maxWidth = with(density) { graphResult?.width?.let { CELL_SIZE * it }?.toPx()?.let { it / totalWidth } }),
+                    TableColumn(id = "message", title = "Message", defaultWidth = 0.4f),
+                    TableColumn(id = "date", title = "Date", defaultWidth = 0.2f)
+                )
+            )
+        }
+
+        val columnWidths = remember {
+            mutableStateMapOf<String, Float>().apply {
+                columns.forEach { put(it.id, it.defaultWidth) }
             }
-        )
+        }
 
-        // Commit list with scrollbar
-        Box(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                state = listState
-            ) {
-                items(commits) { commit ->
-                    CommitRow(
-                        commit = commit,
-                        columns = columns,
-                        columnWidths = columnWidths,
-                        graphResult = graphResult,
-                        onClick = { onCommitClick(commit) },
-                        onWidthChanged = { columnId, newWidth ->
-                            columnWidths[columnId] = newWidth
-                        }
-                    )
+        val listState = rememberLazyListState()
+
+        LaunchedEffect(graphResult?.width, density, totalWidth) {
+            columns = listOf(
+                TableColumn(id = "branch", title = "Ref", defaultWidth = 0.1f, resizable = false),
+                TableColumn(
+                    id = "graph",
+                    title = "Graph",
+                    defaultWidth = 0.3f,
+                    maxWidth = with(density) { graphResult?.width?.let { CELL_SIZE * it }?.toPx()?.let { it / totalWidth } }),
+                TableColumn(id = "message", title = "Message", defaultWidth = 0.4f),
+                TableColumn(id = "date", title = "Date", defaultWidth = 0.2f)
+            )
+
+            columns.forEachIndexed { index, column ->
+                if (column.maxWidth != null &&  column.maxWidth < columnWidths[column.id]!!) {
+                    val diff = columnWidths[column.id]!! - column.maxWidth
+                    columnWidths[column.id] = column.maxWidth
+                    columnWidths[columns[index + 1].id] = columnWidths[columns[index + 1].id]!! + diff
                 }
+            }
+        }
 
-                // Loading indicator at the end if there's more
-                if (hasMore) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp)
-                            )
+        // Détecter quand on arrive vers la fin de la liste
+        LaunchedEffect(listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index) {
+            val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val totalItems = listState.layoutInfo.totalItemsCount
+
+            // Charger plus quand on est à 10 éléments de la fin
+            if (hasMore && totalItems > 0 && lastVisibleIndex >= totalItems - 10) {
+                onLoadMore()
+            }
+        }
+
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Header
+            ResizableColumnsHeader(
+                columns = columns,
+                columnWidths = columnWidths,
+                onWidthChanged = { columnId, newWidth ->
+                    columnWidths[columnId] = newWidth
+                },
+                totalWidth = totalWidth
+            )
+
+            // Commit list with scrollbar
+            Box(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = listState
+                ) {
+                    items(commits) { commit ->
+                        CommitRow(
+                            commit = commit,
+                            columns = columns,
+                            columnWidths = columnWidths,
+                            graphResult = graphResult,
+                            onClick = { onCommitClick(commit) },
+                            onWidthChanged = { columnId, newWidth ->
+                                columnWidths[columnId] = newWidth
+                            },
+                            gravatarViewModel = gravatarViewModel,
+                            totalWidth = totalWidth
+                        )
+                    }
+
+                    // Loading indicator at the end if there's more
+                    if (hasMore) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         }
                     }
                 }
-            }
 
-            VerticalScrollbar(
-                scrollState = listState,
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .fillMaxHeight()
-            )
+                VerticalScrollbar(
+                    scrollState = listState,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                )
+            }
         }
+
     }
 }
 
@@ -145,16 +196,15 @@ fun CommitList(
 private fun ResizableColumnsHeader(
     columns: List<TableColumn>,
     columnWidths: Map<String, Float>,
-    onWidthChanged: (String, Float) -> Unit
+    onWidthChanged: (String, Float) -> Unit,
+    totalWidth: Float
 ) {
-    BoxWithConstraints(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(30.dp)
             .border(1.dp, JewelTheme.defaultTitleBarStyle.colors.background)
     ) {
-        val totalWidth = constraints.maxWidth.toFloat()
-
         Row(
             modifier = Modifier.fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically
@@ -191,9 +241,17 @@ private fun CommitRow(
     columnWidths: Map<String, Float>,
     graphResult: GraphResult?,
     onClick: () -> Unit,
-    onWidthChanged: (String, Float) -> Unit
+    onWidthChanged: (String, Float) -> Unit,
+    gravatarViewModel: GravatarViewModel,
+    totalWidth: Float
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+
+
+    LaunchedEffect(commit.author?.email) {
+        commit.author?.email?.let { gravatarViewModel.loadGravatarOfAuthor(it) }
+    }
+
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
@@ -207,40 +265,41 @@ private fun CommitRow(
             .clickable(onClick = onClick)
             .hoverable(interactionSource)
     ) {
-        val totalWidth = constraints.maxWidth.toFloat()
-
         Row(
             modifier = Modifier.fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val position = graphResult?.positions[commit.hash]?.column
             columns.forEachIndexed { index, column ->
                 val width = columnWidths[column.id] ?: column.defaultWidth
+                val padding = if (column.id == "graph") 0.dp else 12.dp
+
 
                 Box(
                     modifier = Modifier
                         .weight(width)
                         .fillMaxHeight()
                         .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 12.dp),
+                        .padding(horizontal = padding),
                     contentAlignment = if (index == columns.size - 1) Alignment.CenterEnd else Alignment.CenterStart
                 ) {
                     when (column.id) {
                         "branch" -> {
-                            Text(text = "BRANCH")
+                            Text(text = "")
                         }
 
                         "graph" -> {
                             if (graphResult != null && graphResult.width > 0) {
-                                val position = graphResult.positions[commit.hash]
                                 Row {
-                                    for (col in 0 until graphResult.width) {
-                                        val hasNode = position?.column == col
+                                    for (col in 1 until graphResult.width + 1) {
                                         val cellEdges = getEdgesForCell(commit.row, col, graphResult.edges)
                                         GraphCell(
                                             row = commit.row,
                                             column = col,
-                                            hasNode = hasNode,
-                                            edges = cellEdges
+                                            nodePosition = position,
+                                            edges = cellEdges,
+                                            author = commit.author,
+                                            gravatarViewModel = gravatarViewModel
                                         )
                                     }
                                 }
@@ -275,7 +334,16 @@ private fun CommitRow(
                     }
                 }
 
-                ResizeColumnsDivider(index, columns, columnWidths, totalWidth, column, onWidthChanged)
+                ResizeColumnsDivider(
+                    index,
+                    columns,
+                    columnWidths,
+                    totalWidth,
+                    column,
+                    onWidthChanged,
+                    color = if (column.id === "graph") position?.let { graphColors[it % graphColors.size].border} else null,
+                    sliderModifier = Modifier.width(2.dp).padding(vertical = 2.dp)
+                )
             }
         }
     }
@@ -291,13 +359,17 @@ private fun ResizeColumnsDivider(
     columnWidths: Map<String, Float>,
     totalWidth: Float,
     column: TableColumn,
-    onWidthChanged: (String, Float) -> Unit
+    onWidthChanged: (String, Float) -> Unit,
+    color: Color? = null,
+    sliderModifier: Modifier = Modifier
 ) {
     var columnWidthsAtStartOfDrag = columnWidths.toMap()
     val currentColumn = columns[index]
     val nextColumn = columns.getOrNull(index + 1)
     if (index < columns.size - 1) {
         ColumnDivider(
+            color = color,
+            sliderModifier = sliderModifier,
             resizable = column.resizable,
             onDragStart = { columnWidthsAtStartOfDrag = columnWidths.toMap() },
             onPositionChange = { deltaX ->
@@ -306,13 +378,13 @@ private fun ResizeColumnsDivider(
 
                 val widthAtStartOfDrag = columnWidthsAtStartOfDrag[column.id] ?: column.defaultWidth
                 val ratio = widthAtStartOfDrag + dragRatio
-                val newCurrentWidth = ratio.coerceAtLeast(currentColumn.minWidth)
+                val newCurrentWidth = ratio.coerceIn(currentColumn.minWidth, currentColumn.maxWidth)
                 val dragRatioFinal = newCurrentWidth - widthAtStartOfDrag
 
                 if (nextColumn != null) {
                     val nextColumnWidthAtStartOfDrag = columnWidthsAtStartOfDrag[nextColumn.id] ?: column.defaultWidth
                     val nextColumnRatio = nextColumnWidthAtStartOfDrag - dragRatioFinal
-                    val newNextWidth = nextColumnRatio.coerceAtLeast(nextColumn.minWidth)
+                    val newNextWidth = nextColumnRatio.coerceIn(nextColumn.minWidth, nextColumn.maxWidth)
 
                     if (newCurrentWidth >= currentColumn.minWidth && nextColumnRatio >= nextColumn.minWidth) {
                         onWidthChanged(currentColumn.id, newCurrentWidth)
@@ -330,7 +402,10 @@ private fun ResizeColumnsDivider(
 private fun ColumnDivider(
     onDragStart: () -> Unit,
     onPositionChange: (absoluteX: Float) -> Unit,
-    resizable: Boolean = true
+    resizable: Boolean = true,
+    color: Color? = null,
+    sliderModifier: Modifier = Modifier
+        .width(1.dp)
 ) {
 
     val modifier = if (resizable) Modifier
@@ -355,10 +430,9 @@ private fun ColumnDivider(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier
-                .background(JewelTheme.defaultTitleBarStyle.colors.background)
+            modifier = sliderModifier
+                .background(color ?: JewelTheme.defaultTitleBarStyle.colors.background)
                 .fillMaxHeight()
-                .width(1.dp)
         )
     }
 }

@@ -9,12 +9,15 @@ import androidx.compose.ui.unit.dp
 import fr.accoradd.gitspine.domain.model.Commit
 import fr.accoradd.gitspine.domain.model.CommitOrWip
 import fr.accoradd.gitspine.domain.model.GraphResult
+import fr.accoradd.gitspine.domain.model.WorkspaceStatus
 import fr.accoradd.gitspine.ui.components.common.ThreeColumnResizablePanes
 import fr.accoradd.gitspine.ui.components.repository.CommitData
+import fr.accoradd.gitspine.ui.components.repository.CommitDataAuthor
 import fr.accoradd.gitspine.ui.components.repository.CommitList
 import fr.accoradd.gitspine.ui.components.repository.RepositoryLeftPanel
 import fr.accoradd.gitspine.ui.components.workspace.WorkspaceChangesPanel
 import fr.accoradd.gitspine.ui.theme.jewelColors
+import fr.accoradd.gitspine.ui.viewmodel.GravatarViewModel
 import fr.accoradd.gitspine.ui.viewmodel.RepositoryScreenViewModel
 import fr.accoradd.gitspine.ui.viewmodel.WorkspaceViewModel
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -33,6 +36,7 @@ fun RepositoryScreen(
 ) {
     val workspaceViewModel: WorkspaceViewModel = koinInject()
     val repositoryScreenViewModel: RepositoryScreenViewModel = koinInject()
+    val gravatarViewModel: GravatarViewModel = koinInject()
 
     val workspaceState by workspaceViewModel.state.collectAsState()
 
@@ -113,7 +117,8 @@ fun RepositoryScreen(
                     selectedItem = selectedItem.value,
                     onItemClick = { repositoryScreenViewModel.onClickCommit(it) },
                     onLoadMore = { repositoryScreenViewModel.loadCommits() },
-                    hasMore = hasMoreCommits.value
+                    hasMore = hasMoreCommits.value,
+                    gravatarViewModel = gravatarViewModel
                 )
             },
             rightContent = {
@@ -138,11 +143,12 @@ fun RepositoryScreen(
 private fun CenterPanel(
     commits: List<Commit>,
     graphResult: GraphResult?,
-    workspaceStatus: fr.accoradd.gitspine.domain.model.WorkspaceStatus,
+    workspaceStatus: WorkspaceStatus,
     selectedItem: CommitOrWip?,
     onItemClick: (CommitOrWip) -> Unit,
     onLoadMore: () -> Unit,
-    hasMore: Boolean
+    hasMore: Boolean,
+    gravatarViewModel: GravatarViewModel
 ) {
     val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm") }
     val hasWip = workspaceStatus.hasChanges
@@ -154,7 +160,7 @@ private fun CenterPanel(
                     hash = "WIP",
                     shortHash = "WIP",
                     message = "Modifications en cours (${workspaceStatus.stagedCount + workspaceStatus.unstagedCount} fichiers)",
-                    author = "",
+                    author = null,
                     date = "",
                     isSelected = selectedItem is CommitOrWip.Wip,
                     row = 0
@@ -168,7 +174,7 @@ private fun CenterPanel(
                     hash = commit.id,
                     shortHash = commit.shortId,
                     message = commit.message,
-                    author = commit.author.name,
+                    author = CommitDataAuthor(name = commit.author.name, commit.author.email),
                     date = dateFormatter.format(
                         java.time.LocalDateTime.ofInstant(
                             commit.timestamp,
@@ -195,7 +201,8 @@ private fun CenterPanel(
             }
         },
         onLoadMore = onLoadMore,
-        hasMore = hasMore
+        hasMore = hasMore,
+        gravatarViewModel = gravatarViewModel
     )
 }
 

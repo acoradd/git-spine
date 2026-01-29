@@ -20,7 +20,7 @@ class GraphUseCase {
         hasWip: Boolean,
         commits: List<Commit>,
         headCommitId: String?
-    ): GraphResult = withContext(Dispatchers.Default) {
+    ): GraphResult = withContext(Dispatchers.IO) {
         if (commits.isEmpty() && !hasWip) {
             return@withContext GraphResult(emptyMap(), emptyList(), 0)
         }

@@ -61,5 +61,6 @@ val appModule = module {
     single { AppViewModel(get(), get(), get()) }
     viewModel { WelcomeScreenViewModel(get()) }
     viewModel { RepositoryScreenViewModel(get(), get(), get()) }
+    viewModel { GravatarViewModel() }
     viewModel { WorkspaceViewModel(get(), get(), get(), get(), get(), get(), get()) }
 }

@@ -3,18 +3,35 @@ package fr.accoradd.gitspine.ui.components.graph
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import fr.accoradd.gitspine.core.extension.toMD5
+import fr.accoradd.gitspine.domain.model.EdgeType
 import fr.accoradd.gitspine.domain.model.GraphEdge
-import fr.accoradd.gitspine.domain.model.GraphPosition
+import fr.accoradd.gitspine.ui.components.repository.CommitDataAuthor
 import fr.accoradd.gitspine.ui.theme.graphColors
+import fr.accoradd.gitspine.ui.viewmodel.GravatarViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.jetbrains.skia.Image
+import java.net.URI
 
-private val CELL_SIZE = 30.dp
-private val CIRCLE_RADIUS = 5.dp
+
+val CELL_SIZE = 30.dp
+private val CIRCLE_RADIUS = 12.dp
+private val MERGE_CIRCLE_RADIUS = 6.dp
 private val LINE_WIDTH = 2.dp
+private val SMALL_LINE_WIDTH = 1.dp
 
 /**
  * Une cellule du graphe git (30x30 dp).
@@ -29,11 +46,17 @@ private val LINE_WIDTH = 2.dp
 fun GraphCell(
     row: Int,
     column: Int,
-    hasNode: Boolean,
+    nodePosition: Int?,
     edges: List<GraphEdge>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    author: CommitDataAuthor?,
+    gravatarViewModel: GravatarViewModel
 ) {
     val color = graphColors[column % graphColors.size].border
+
+    val images = gravatarViewModel.state.collectAsState()
+
+    val imageBitmap = author?.email?.let{ images.value[it] }
 
     Canvas(modifier = modifier.size(CELL_SIZE)) {
         val cellWidth = size.width
@@ -41,7 +64,28 @@ fun GraphCell(
         val centerX = cellWidth / 2
         val centerY = cellHeight / 2
         val lineWidthPx = LINE_WIDTH.toPx()
+        val smallLineWidthPx = SMALL_LINE_WIDTH.toPx()
         val circleRadiusPx = CIRCLE_RADIUS.toPx()
+        val mergeCircleRadiusPx = MERGE_CIRCLE_RADIUS.toPx()
+        val bgWidth = mergeCircleRadiusPx * 4
+        val offsetBgTop = (size.height - bgWidth) / 2
+
+        if (nodePosition != null) {
+            if (nodePosition < column) {
+                drawRect(
+                    color = graphColors[nodePosition % graphColors.size].bg,
+                    topLeft = Offset(0f, offsetBgTop),
+                    size = Size(size.width, bgWidth)
+                )
+            } else if (nodePosition == column) {
+                val halfWidth = size.width / 2
+                drawRect(
+                    color = graphColors[nodePosition % graphColors.size].bg,
+                    topLeft = Offset(halfWidth, offsetBgTop),
+                    size = Size(halfWidth, bgWidth)
+                )
+            }
+        }
 
         // Pour chaque edge, determiner ce qu'il faut dessiner dans cette cellule
         for (edge in edges) {
@@ -70,90 +114,51 @@ fun GraphCell(
                         cap = StrokeCap.Round
                     )
                 }
-
-                // Cas 2: Diagonale - la cellule est le point de depart (from)
-                row == fromRow && column == fromCol && fromCol != toCol -> {
-                    // Dessiner du centre vers le bas, en direction de toCol
-                    val targetX = if (toCol > fromCol) cellWidth else 0f
-                    drawLine(
-                        color = edgeColor,
-                        start = Offset(centerX, centerY),
-                        end = Offset(targetX, cellHeight),
-                        strokeWidth = lineWidthPx,
-                        cap = StrokeCap.Round
-                    )
-                }
-
-                // Cas 3: Diagonale - la cellule est le point d'arrivee (to)
-                row == toRow && column == toCol && fromCol != toCol -> {
-                    // Dessiner du haut en direction de fromCol vers le centre
-                    val sourceX = if (fromCol > toCol) cellWidth else 0f
-                    drawLine(
-                        color = edgeColor,
-                        start = Offset(sourceX, 0f),
-                        end = Offset(centerX, centerY),
-                        strokeWidth = lineWidthPx,
-                        cap = StrokeCap.Round
-                    )
-                }
-
-                // Cas 4: Diagonale traversante - la cellule est entre from et to
-                fromCol != toCol && row in (fromRow + 1) until toRow -> {
-                    // Verifier si cette colonne est sur le chemin diagonal
-                    val minCol = minOf(fromCol, toCol)
-                    val maxCol = maxOf(fromCol, toCol)
-
-                    if (column in minCol..maxCol) {
-                        // Calculer si cette cellule est sur la diagonale
-                        val progress = (row - fromRow).toFloat() / (toRow - fromRow).toFloat()
-                        val expectedCol = fromCol + ((toCol - fromCol) * progress).toInt()
-
-                        if (column == expectedCol || column == expectedCol + 1 || column == expectedCol - 1) {
-                            // Cette cellule est sur ou proche de la diagonale
-                            val enterX = if (toCol > fromCol) 0f else cellWidth
-                            val exitX = if (toCol > fromCol) cellWidth else 0f
-
-                            drawLine(
-                                color = edgeColor,
-                                start = Offset(enterX, 0f),
-                                end = Offset(exitX, cellHeight),
-                                strokeWidth = lineWidthPx,
-                                cap = StrokeCap.Round
-                            )
-                        }
-                    }
-                }
-
-                // Cas 5: Ligne verticale passante (passing lane) - meme colonne que from ou to
-                // quand l'edge traverse plusieurs lignes
-                (column == fromCol || column == toCol) && row in (fromRow + 1) until toRow -> {
-                    // Ligne verticale passante
-                    val passingColor = graphColors[column % graphColors.size].border
-                    drawLine(
-                        color = passingColor,
-                        start = Offset(centerX, 0f),
-                        end = Offset(centerX, cellHeight),
-                        strokeWidth = lineWidthPx,
-                        cap = StrokeCap.Round
-                    )
-                }
             }
         }
 
         // Dessiner le noeud (cercle) si present
-        if (hasNode) {
-            // Cercle exterieur (bordure)
-            drawCircle(
-                color = color,
-                radius = circleRadiusPx,
-                center = Offset(centerX, centerY)
-            )
-            // Cercle interieur (remplissage)
-            drawCircle(
-                color = graphColors[column % graphColors.size].bg,
-                radius = circleRadiusPx - lineWidthPx,
-                center = Offset(centerX, centerY)
-            )
+        if (nodePosition == column) {
+            val isMerge = edges.any { edge -> edge.type == EdgeType.Merge }
+            if (isMerge) {
+                drawCircle(
+                    color = color,
+                    radius = mergeCircleRadiusPx,
+                    center = Offset(centerX, centerY)
+                )
+            } else {
+                drawCircle(
+                    color = color,
+                    radius = circleRadiusPx,
+                    center = Offset(centerX, centerY)
+                )
+                if (imageBitmap != null) {
+                    val center = Offset(size.width / 2, size.height / 2)
+
+                    // Créer un chemin circulaire
+                    val path = Path().apply {
+                        addOval(androidx.compose.ui.geometry.Rect(
+                            center.x - circleRadiusPx + lineWidthPx,
+                            center.y - circleRadiusPx + lineWidthPx,
+                            center.x + circleRadiusPx - lineWidthPx,
+                            center.y + circleRadiusPx - lineWidthPx
+                        ))
+                    }
+                    clipPath(path) {
+                        drawImage(
+                            image = imageBitmap,
+                            dstOffset = IntOffset((lineWidthPx * 2).toInt(), (lineWidthPx * 2).toInt()),
+                            dstSize = IntSize(((circleRadiusPx) * 2 - lineWidthPx).toInt(), ((circleRadiusPx - lineWidthPx) * 2).toInt())
+                        )
+                    }
+                } else {
+                    drawCircle(
+                        color = graphColors[column % graphColors.size].bg,
+                        radius = circleRadiusPx - lineWidthPx,
+                        center = Offset(centerX, centerY)
+                    )
+                }
+            }
         }
     }
 }
@@ -188,5 +193,22 @@ fun getEdgesForCell(row: Int, column: Int, allEdges: List<GraphEdge>): List<Grap
         }
 
         false
+    }
+}
+
+suspend fun loadGravatarOfAuthor(email: String): ImageBitmap? {
+    return withContext(Dispatchers.IO) {
+        try {
+            val connection = URI("https://www.gravatar.com/avatar/${email.toMD5()}").toURL().openConnection()
+            connection.connectTimeout = 5000
+            connection.readTimeout = 5000
+            connection.getInputStream().use { inputStream ->
+                val bytes = inputStream.readBytes()
+                Image.makeFromEncoded(bytes).toComposeImageBitmap()
+            }
+        } catch (e: Exception) {
+            println("Erreur lors du chargement de l'image: ${e.message}")
+            null
+        }
     }
 }
