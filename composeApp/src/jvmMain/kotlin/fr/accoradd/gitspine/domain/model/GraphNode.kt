@@ -17,7 +17,9 @@ enum class EdgeType {
     /** Arete normale (premier parent) */
     Normal,
     /** Arete de merge (parent secondaire) */
-    Merge
+    Merge,
+    /** Arete fantome (parent pas encore charge, lazy loading) */
+    Phantom
 }
 
 /**

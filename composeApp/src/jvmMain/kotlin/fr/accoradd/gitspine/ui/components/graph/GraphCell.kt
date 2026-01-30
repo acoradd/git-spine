@@ -8,6 +8,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.unit.IntOffset
@@ -98,7 +99,22 @@ fun GraphCell(
                 graphColors[toCol % graphColors.size].border
             } else graphColors[fromCol % graphColors.size].border
 
-            if (isEdgeMerge) {
+            val isPhantom = edge.type == EdgeType.Phantom
+
+            if (isPhantom) {
+                // Edge fantome: ligne verticale en pointilles
+                if (column == fromCol && row in minRow..maxRow) {
+                    val startY = if (row == fromRow) centerY else 0f
+
+                    drawLine(
+                        color = edgeColor,
+                        start = Offset(centerX, startY),
+                        end = Offset(centerX, cellHeight),
+                        strokeWidth = lineWidthPx,
+                        cap = StrokeCap.Butt
+                    )
+                }
+            } else if (isEdgeMerge) {
                 when {
                     // merge arrivant sur ce commit
                     row == fromRow && fromCol == column -> {
@@ -337,7 +353,9 @@ fun getEdgesForCell(row: Int, column: Int, allEdges: List<GraphEdge>): List<Grap
         val minRow = minOf(fromRow, toRow)
         val maxRow = maxOf(fromRow, toRow)
 
-        if (edge.type == EdgeType.Merge) {
+        if (edge.type == EdgeType.Phantom) {
+            if (column == fromCol && row in minRow..maxRow) return@filter true
+        } else if (edge.type == EdgeType.Merge) {
             if (row == fromRow && column in minCol..maxCol) return@filter true
             if (column == toCol && row in minRow..maxRow) return@filter true
         } else {

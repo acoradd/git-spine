@@ -221,6 +221,8 @@ class GraphUseCase {
             }
         }
 
+        val lastRow = if (hasWip) commits.size else commits.size - 1
+
         for (commit in commits) {
             val commitPos = positions[commit.id] ?: continue
             val commitParents = parents[commit.id] ?: continue
@@ -230,6 +232,10 @@ class GraphUseCase {
                 if (parentPos != null) {
                     val edgeType = if (parentIndex > 0) EdgeType.Merge else EdgeType.Normal
                     edges.add(GraphEdge(from = commitPos, to = parentPos, type = edgeType))
+                } else {
+                    // Parent pas encore charge (lazy loading) -> edge fantome
+                    val phantomTo = GraphPosition(row = lastRow, column = commitPos.column)
+                    edges.add(GraphEdge(from = commitPos, to = phantomTo, type = EdgeType.Phantom))
                 }
             }
         }
