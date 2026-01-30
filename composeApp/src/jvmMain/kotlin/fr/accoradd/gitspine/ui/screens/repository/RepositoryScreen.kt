@@ -5,19 +5,15 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.dp
-import fr.accoradd.gitspine.domain.model.Commit
-import fr.accoradd.gitspine.domain.model.CommitOrWip
-import fr.accoradd.gitspine.domain.model.GraphResult
-import fr.accoradd.gitspine.domain.model.WorkspaceStatus
+import fr.accoradd.gitspine.domain.model.*
 import fr.accoradd.gitspine.ui.components.common.ThreeColumnResizablePanes
 import fr.accoradd.gitspine.ui.components.repository.CommitData
-import fr.accoradd.gitspine.ui.components.repository.CommitDataAuthor
 import fr.accoradd.gitspine.ui.components.repository.CommitList
 import fr.accoradd.gitspine.ui.components.repository.RepositoryLeftPanel
 import fr.accoradd.gitspine.ui.components.workspace.WorkspaceChangesPanel
 import fr.accoradd.gitspine.ui.theme.jewelColors
-import fr.accoradd.gitspine.ui.viewmodel.GravatarViewModel
 import fr.accoradd.gitspine.ui.viewmodel.RepositoryScreenViewModel
 import fr.accoradd.gitspine.ui.viewmodel.WorkspaceViewModel
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -27,6 +23,7 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.window.defaultTitleBarStyle
 import org.koin.compose.koinInject
 import java.nio.file.Path
+import java.time.Instant
 import java.time.format.DateTimeFormatter
 
 
@@ -36,7 +33,6 @@ fun RepositoryScreen(
 ) {
     val workspaceViewModel: WorkspaceViewModel = koinInject()
     val repositoryScreenViewModel: RepositoryScreenViewModel = koinInject()
-    val gravatarViewModel: GravatarViewModel = koinInject()
 
     val workspaceState by workspaceViewModel.state.collectAsState()
 
@@ -49,6 +45,7 @@ fun RepositoryScreen(
     val selectedItem = repositoryScreenViewModel.commit.collectAsState()
     val hasMoreCommits = repositoryScreenViewModel.hasMoreCommits.collectAsState()
     val graphResult = repositoryScreenViewModel.graphResult.collectAsState()
+    val gravatars = repositoryScreenViewModel.gravatars.collectAsState()
 
     LaunchedEffect(path) {
         repositoryScreenViewModel.open(Path.of(path))
@@ -118,7 +115,7 @@ fun RepositoryScreen(
                     onItemClick = { repositoryScreenViewModel.onClickCommit(it) },
                     onLoadMore = { repositoryScreenViewModel.loadCommits() },
                     hasMore = hasMoreCommits.value,
-                    gravatarViewModel = gravatarViewModel
+                    gravatars = gravatars.value
                 )
             },
             rightContent = {
@@ -148,7 +145,7 @@ private fun CenterPanel(
     onItemClick: (CommitOrWip) -> Unit,
     onLoadMore: () -> Unit,
     hasMore: Boolean,
-    gravatarViewModel: GravatarViewModel
+    gravatars: Map<String, ImageBitmap?>
 ) {
     val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm") }
     val hasWip = workspaceStatus.hasChanges
@@ -157,10 +154,14 @@ private fun CenterPanel(
         if (hasWip) {
             add(
                 CommitData(
-                    hash = "WIP",
-                    shortHash = "WIP",
-                    message = "Modifications en cours (${workspaceStatus.stagedCount + workspaceStatus.unstagedCount} fichiers)",
-                    author = null,
+                    info = Commit(
+                        id = "WIP",
+                        shortId = "WIP",
+                        message = "WIP",
+                        author = Author(name = "", email = ""),
+                        timestamp = Instant.now(),
+                        parents = emptyList()
+                    ),
                     date = "",
                     isSelected = selectedItem is CommitOrWip.Wip,
                     row = 0
@@ -171,10 +172,7 @@ private fun CenterPanel(
             val row = if (hasWip) index + 1 else index
             add(
                 CommitData(
-                    hash = commit.id,
-                    shortHash = commit.shortId,
-                    message = commit.message,
-                    author = CommitDataAuthor(name = commit.author.name, commit.author.email),
+                    info = commit,
                     date = dateFormatter.format(
                         java.time.LocalDateTime.ofInstant(
                             commit.timestamp,
@@ -192,17 +190,15 @@ private fun CenterPanel(
         commits = commitDataList,
         graphResult = graphResult,
         onCommitClick = { commitData ->
-            if (commitData.hash == "WIP") {
+            if (commitData.info.id == "WIP") {
                 onItemClick(CommitOrWip.Wip)
             } else {
-                commits.find { it.id == commitData.hash }?.let { commit ->
-                    onItemClick(CommitOrWip.CommitItem(commit))
-                }
+                onItemClick(CommitOrWip.CommitItem(commitData.info))
             }
         },
         onLoadMore = onLoadMore,
         hasMore = hasMore,
-        gravatarViewModel = gravatarViewModel
+        gravatars = gravatars
     )
 }
 

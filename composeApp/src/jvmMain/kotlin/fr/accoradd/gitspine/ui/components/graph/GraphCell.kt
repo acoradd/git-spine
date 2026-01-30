@@ -3,7 +3,6 @@ package fr.accoradd.gitspine.ui.components.graph
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -11,20 +10,13 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import fr.accoradd.gitspine.core.extension.toMD5
+import fr.accoradd.gitspine.domain.model.Author
 import fr.accoradd.gitspine.domain.model.EdgeType
 import fr.accoradd.gitspine.domain.model.GraphEdge
-import fr.accoradd.gitspine.ui.components.repository.CommitDataAuthor
 import fr.accoradd.gitspine.ui.theme.graphColors
-import fr.accoradd.gitspine.ui.viewmodel.GravatarViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import org.jetbrains.skia.Image
-import java.net.URI
 
 
 val CELL_SIZE = 30.dp
@@ -49,14 +41,12 @@ fun GraphCell(
     nodePosition: Int?,
     edges: List<GraphEdge>,
     modifier: Modifier = Modifier,
-    author: CommitDataAuthor?,
-    gravatarViewModel: GravatarViewModel
+    author: Author,
+    gravatars: Map<String, ImageBitmap?>
 ) {
     val color = graphColors[column % graphColors.size].border
 
-    val images = gravatarViewModel.state.collectAsState()
-
-    val imageBitmap = author?.email?.let{ images.value[it] }
+    val imageBitmap = gravatars[author.email]
 
     Canvas(modifier = modifier.size(CELL_SIZE)) {
         val cellWidth = size.width
@@ -137,18 +127,23 @@ fun GraphCell(
 
                     // Créer un chemin circulaire
                     val path = Path().apply {
-                        addOval(androidx.compose.ui.geometry.Rect(
-                            center.x - circleRadiusPx + lineWidthPx,
-                            center.y - circleRadiusPx + lineWidthPx,
-                            center.x + circleRadiusPx - lineWidthPx,
-                            center.y + circleRadiusPx - lineWidthPx
-                        ))
+                        addOval(
+                            androidx.compose.ui.geometry.Rect(
+                                center.x - circleRadiusPx + lineWidthPx,
+                                center.y - circleRadiusPx + lineWidthPx,
+                                center.x + circleRadiusPx - lineWidthPx,
+                                center.y + circleRadiusPx - lineWidthPx
+                            )
+                        )
                     }
                     clipPath(path) {
                         drawImage(
                             image = imageBitmap,
                             dstOffset = IntOffset((lineWidthPx * 2).toInt(), (lineWidthPx * 2).toInt()),
-                            dstSize = IntSize(((circleRadiusPx) * 2 - lineWidthPx).toInt(), ((circleRadiusPx - lineWidthPx) * 2).toInt())
+                            dstSize = IntSize(
+                                ((circleRadiusPx) * 2 - lineWidthPx).toInt(),
+                                ((circleRadiusPx - lineWidthPx) * 2).toInt()
+                            )
                         )
                     }
                 } else {
@@ -193,22 +188,5 @@ fun getEdgesForCell(row: Int, column: Int, allEdges: List<GraphEdge>): List<Grap
         }
 
         false
-    }
-}
-
-suspend fun loadGravatarOfAuthor(email: String): ImageBitmap? {
-    return withContext(Dispatchers.IO) {
-        try {
-            val connection = URI("https://www.gravatar.com/avatar/${email.toMD5()}").toURL().openConnection()
-            connection.connectTimeout = 5000
-            connection.readTimeout = 5000
-            connection.getInputStream().use { inputStream ->
-                val bytes = inputStream.readBytes()
-                Image.makeFromEncoded(bytes).toComposeImageBitmap()
-            }
-        } catch (e: Exception) {
-            println("Erreur lors du chargement de l'image: ${e.message}")
-            null
-        }
     }
 }

@@ -13,18 +13,20 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import fr.accoradd.gitspine.domain.model.Commit
 import fr.accoradd.gitspine.domain.model.GraphResult
 import fr.accoradd.gitspine.ui.components.graph.CELL_SIZE
 import fr.accoradd.gitspine.ui.components.graph.GraphCell
 import fr.accoradd.gitspine.ui.components.graph.getEdgesForCell
 import fr.accoradd.gitspine.ui.theme.graphColors
-import fr.accoradd.gitspine.ui.viewmodel.GravatarViewModel
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
@@ -41,22 +43,12 @@ data class TableColumn(
     val resizable: Boolean = true,
 )
 
-data class CommitDataAuthor(
-    val name: String,
-    val email: String
-)
-
 data class CommitData(
-    val hash: String,
-    val shortHash: String,
-    val message: String,
-    val author: CommitDataAuthor?,
+    val info: Commit,
     val date: String,
     val isSelected: Boolean = false,
     val row: Int = 0
 )
-
-data class MinMax(val min: Float, val max: Float? = null)
 
 @Composable
 fun CommitList(
@@ -65,7 +57,7 @@ fun CommitList(
     onCommitClick: (CommitData) -> Unit = {},
     onLoadMore: () -> Unit = {},
     hasMore: Boolean = false,
-    gravatarViewModel: GravatarViewModel
+    gravatars: Map<String, ImageBitmap?>
 ) {
     val density = LocalDensity.current
 
@@ -76,16 +68,7 @@ fun CommitList(
 
         var columns by remember {
             mutableStateOf(
-                listOf(
-                    TableColumn(id = "branch", title = "Ref", defaultWidth = 0.1f, resizable = false),
-                    TableColumn(
-                        id = "graph",
-                        title = "Graph",
-                        defaultWidth = 0.3f,
-                        maxWidth = with(density) { graphResult?.width?.let { CELL_SIZE * it }?.toPx()?.let { it / totalWidth } }),
-                    TableColumn(id = "message", title = "Message", defaultWidth = 0.4f),
-                    TableColumn(id = "date", title = "Date", defaultWidth = 0.2f)
-                )
+                getTableColumns(density, graphResult, totalWidth)
             )
         }
 
@@ -98,19 +81,10 @@ fun CommitList(
         val listState = rememberLazyListState()
 
         LaunchedEffect(graphResult?.width, density, totalWidth) {
-            columns = listOf(
-                TableColumn(id = "branch", title = "Ref", defaultWidth = 0.1f, resizable = false),
-                TableColumn(
-                    id = "graph",
-                    title = "Graph",
-                    defaultWidth = 0.3f,
-                    maxWidth = with(density) { graphResult?.width?.let { CELL_SIZE * it }?.toPx()?.let { it / totalWidth } }),
-                TableColumn(id = "message", title = "Message", defaultWidth = 0.4f),
-                TableColumn(id = "date", title = "Date", defaultWidth = 0.2f)
-            )
+            columns = getTableColumns(density, graphResult, totalWidth)
 
             columns.forEachIndexed { index, column ->
-                if (column.maxWidth != null &&  column.maxWidth < columnWidths[column.id]!!) {
+                if (column.maxWidth != null && column.maxWidth < columnWidths[column.id]!!) {
                     val diff = columnWidths[column.id]!! - column.maxWidth
                     columnWidths[column.id] = column.maxWidth
                     columnWidths[columns[index + 1].id] = columnWidths[columns[index + 1].id]!! + diff
@@ -148,7 +122,10 @@ fun CommitList(
                     modifier = Modifier.fillMaxSize(),
                     state = listState
                 ) {
-                    items(commits) { commit ->
+                    items(
+                        items = commits,
+                        key = { it.info.id }
+                    ) { commit ->
                         CommitRow(
                             commit = commit,
                             columns = columns,
@@ -158,7 +135,7 @@ fun CommitList(
                             onWidthChanged = { columnId, newWidth ->
                                 columnWidths[columnId] = newWidth
                             },
-                            gravatarViewModel = gravatarViewModel,
+                            gravatars = gravatars,
                             totalWidth = totalWidth
                         )
                     }
@@ -191,6 +168,21 @@ fun CommitList(
 
     }
 }
+
+private fun getTableColumns(
+    density: Density,
+    graphResult: GraphResult?,
+    totalWidth: Float
+): List<TableColumn> = listOf(
+    TableColumn(id = "branch", title = "Ref", defaultWidth = 0.1f, resizable = false),
+    TableColumn(
+        id = "graph",
+        title = "Graph",
+        defaultWidth = 0.3f,
+        maxWidth = with(density) { graphResult?.width?.let { CELL_SIZE * it }?.toPx()?.let { it / totalWidth } }),
+    TableColumn(id = "message", title = "Message", defaultWidth = 0.4f),
+    TableColumn(id = "date", title = "Date", defaultWidth = 0.2f)
+)
 
 @Composable
 private fun ResizableColumnsHeader(
@@ -242,15 +234,12 @@ private fun CommitRow(
     graphResult: GraphResult?,
     onClick: () -> Unit,
     onWidthChanged: (String, Float) -> Unit,
-    gravatarViewModel: GravatarViewModel,
+    gravatars: Map<String, ImageBitmap?>,
     totalWidth: Float
 ) {
     val interactionSource = remember { MutableInteractionSource() }
 
-
-    LaunchedEffect(commit.author?.email) {
-        commit.author?.email?.let { gravatarViewModel.loadGravatarOfAuthor(it) }
-    }
+    println("Loading commit ${commit.info.id}")
 
     BoxWithConstraints(
         modifier = Modifier
@@ -269,7 +258,7 @@ private fun CommitRow(
             modifier = Modifier.fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val position = graphResult?.positions[commit.hash]?.column
+            val position = graphResult?.positions[commit.info.id]?.column
             columns.forEachIndexed { index, column ->
                 val width = columnWidths[column.id] ?: column.defaultWidth
                 val padding = if (column.id == "graph") 0.dp else 12.dp
@@ -298,8 +287,8 @@ private fun CommitRow(
                                             column = col,
                                             nodePosition = position,
                                             edges = cellEdges,
-                                            author = commit.author,
-                                            gravatarViewModel = gravatarViewModel
+                                            author = commit.info.author,
+                                            gravatars = gravatars
                                         )
                                     }
                                 }
@@ -310,7 +299,7 @@ private fun CommitRow(
 
                         "hash" -> {
                             Text(
-                                text = commit.shortHash,
+                                text = commit.info.shortId,
                                 maxLines = 1,
                                 overflow = TextOverflow.Visible
                             )
@@ -318,7 +307,7 @@ private fun CommitRow(
 
                         "message" -> {
                             Text(
-                                text = commit.message,
+                                text = commit.info.message,
                                 maxLines = 1,
                                 overflow = TextOverflow.Visible
                             )
@@ -341,8 +330,8 @@ private fun CommitRow(
                     totalWidth,
                     column,
                     onWidthChanged,
-                    color = if (column.id === "graph") position?.let { graphColors[it % graphColors.size].border} else null,
-                    sliderModifier = Modifier.width(2.dp).padding(vertical = 2.dp)
+                    color = if (column.id === "graph") position?.let { graphColors[it % graphColors.size].border } else null,
+                    sliderModifier = if (column.id === "graph") Modifier.width(2.dp).padding(vertical = 2.dp) else null
                 )
             }
         }
@@ -361,7 +350,7 @@ private fun ResizeColumnsDivider(
     column: TableColumn,
     onWidthChanged: (String, Float) -> Unit,
     color: Color? = null,
-    sliderModifier: Modifier = Modifier
+    sliderModifier: Modifier? = null
 ) {
     var columnWidthsAtStartOfDrag = columnWidths.toMap()
     val currentColumn = columns[index]
@@ -404,8 +393,7 @@ private fun ColumnDivider(
     onPositionChange: (absoluteX: Float) -> Unit,
     resizable: Boolean = true,
     color: Color? = null,
-    sliderModifier: Modifier = Modifier
-        .width(1.dp)
+    sliderModifier: Modifier? = null
 ) {
 
     val modifier = if (resizable) Modifier
@@ -430,7 +418,7 @@ private fun ColumnDivider(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = sliderModifier
+            modifier = (sliderModifier ?: Modifier.width(1.dp))
                 .background(color ?: JewelTheme.defaultTitleBarStyle.colors.background)
                 .fillMaxHeight()
         )
