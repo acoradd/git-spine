@@ -24,6 +24,7 @@ fun ThreeColumnResizablePanes(
     leftContent: @Composable () -> Unit,
     centerContent: @Composable () -> Unit,
     rightContent: @Composable () -> Unit,
+    hideRightContent: Boolean = false,
     modifier: Modifier = Modifier,
     initialLeftWidth: Float = 0.2f,
     initialRightWidth: Float = 0.25f,
@@ -68,6 +69,7 @@ fun ThreeColumnResizablePanes(
                 // Right divider
                 HorizontalSpacer(
                     width = spacerWidth,
+                    enableDrag = !hideRightContent,
                     onDragStart = { rightWidthAtStartOfDrag = rightWidth },
                     onPositionChange = { deltaX ->
                         val ratio = rightWidthAtStartOfDrag - (deltaX / availableWidth)
@@ -89,7 +91,7 @@ fun ThreeColumnResizablePanes(
             val dividerWidth = spacerWidth.roundToPx()
 
             val leftPaneWidth = (availableWidth * leftWidth).toInt()
-            val rightPaneWidth = (availableWidth * rightWidth).toInt()
+            val rightPaneWidth = if (hideRightContent) 0 else (availableWidth * rightWidth).toInt()
             val centerPaneWidth = width - leftPaneWidth - rightPaneWidth - (dividerWidth * 2)
 
             // Measure children
@@ -148,6 +150,7 @@ private fun Pane(
 @Composable
 private fun HorizontalSpacer(
     width: androidx.compose.ui.unit.Dp,
+    enableDrag: Boolean = true,
     onDragStart: () -> Unit,
     onPositionChange: (absoluteX: Float) -> Unit
 ) {
@@ -155,17 +158,19 @@ private fun HorizontalSpacer(
         modifier = Modifier
             .fillMaxHeight()
             .width(width)
-            .pointerHoverIcon(PointerIcon(Cursor(Cursor.E_RESIZE_CURSOR)))
+            .pointerHoverIcon(if (enableDrag) PointerIcon(Cursor(Cursor.E_RESIZE_CURSOR)) else PointerIcon.Default)
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown()
                     onDragStart()
                     var totalAccumulatedDelta = 0f
                     drag(down.id) { change ->
-                        val dragAmount = change.position.x - change.previousPosition.x
-                        totalAccumulatedDelta += dragAmount
-                        onPositionChange(totalAccumulatedDelta)
-                        change.consume()
+                        if (enableDrag) {
+                            val dragAmount = change.position.x - change.previousPosition.x
+                            totalAccumulatedDelta += dragAmount
+                            onPositionChange(totalAccumulatedDelta)
+                            change.consume()
+                        }
                     }
                 }
             }

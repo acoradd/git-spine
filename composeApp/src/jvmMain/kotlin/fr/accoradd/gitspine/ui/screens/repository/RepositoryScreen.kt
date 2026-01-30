@@ -118,6 +118,7 @@ fun RepositoryScreen(
                     gravatars = gravatars.value
                 )
             },
+            hideRightContent = selectedItem.value == null,
             rightContent = {
                 RightPanel(
                     selectedItem = selectedItem.value,
@@ -205,7 +206,7 @@ private fun CenterPanel(
 @Composable
 private fun RightPanel(
     selectedItem: CommitOrWip?,
-    workspaceStatus: fr.accoradd.gitspine.domain.model.WorkspaceStatus,
+    workspaceStatus: WorkspaceStatus,
     onStageFile: (String) -> Unit,
     onUnstageFile: (String) -> Unit,
     onStageAll: () -> Unit,
@@ -242,7 +243,7 @@ private fun RightPanel(
             ) {
                 Text(
                     "Sélectionnez un commit",
-                    color = jewelColors.grey(8)
+                    color = JewelTheme.globalColors.text.info
                 )
             }
         }

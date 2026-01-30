@@ -3,10 +3,8 @@ package fr.accoradd.gitspine.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import fr.accoradd.gitspine.domain.model.WorkspaceStatus
-import fr.accoradd.gitspine.domain.repository.GitRepository
 import fr.accoradd.gitspine.domain.usecase.workspace.*
 import fr.accoradd.gitspine.infrastructure.git.GitSession
-import fr.accoradd.gitspine.infrastructure.git.JGitRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch

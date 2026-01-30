@@ -13,15 +13,17 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import fr.accoradd.gitspine.domain.model.Author
+import fr.accoradd.gitspine.core.extension.drawRoundedCornerPath
 import fr.accoradd.gitspine.domain.model.EdgeType
 import fr.accoradd.gitspine.domain.model.GraphEdge
+import fr.accoradd.gitspine.ui.components.repository.CommitData
 import fr.accoradd.gitspine.ui.theme.graphColors
 
 
 val CELL_SIZE = 30.dp
 private val CIRCLE_RADIUS = 12.dp
 private val MERGE_CIRCLE_RADIUS = 6.dp
+private val CORNER_RADIUS = 8.dp
 private val LINE_WIDTH = 2.dp
 private val SMALL_LINE_WIDTH = 1.dp
 
@@ -36,14 +38,15 @@ private val SMALL_LINE_WIDTH = 1.dp
  */
 @Composable
 fun GraphCell(
-    row: Int,
+    commit: CommitData,
     column: Int,
     nodePosition: Int?,
     edges: List<GraphEdge>,
     modifier: Modifier = Modifier,
-    author: Author,
     gravatars: Map<String, ImageBitmap?>
 ) {
+    val row = commit.row
+    val author = commit.info.author
     val color = graphColors[column % graphColors.size].border
 
     val imageBitmap = gravatars[author.email]
@@ -57,8 +60,10 @@ fun GraphCell(
         val smallLineWidthPx = SMALL_LINE_WIDTH.toPx()
         val circleRadiusPx = CIRCLE_RADIUS.toPx()
         val mergeCircleRadiusPx = MERGE_CIRCLE_RADIUS.toPx()
+        val cornerRadiusPx = CORNER_RADIUS.toPx();
         val bgWidth = mergeCircleRadiusPx * 4
         val offsetBgTop = (size.height - bgWidth) / 2
+        val isMerge = commit.info.parents.size > 1
 
         if (nodePosition != null) {
             if (nodePosition < column) {
@@ -83,25 +88,185 @@ fun GraphCell(
             val fromCol = edge.from.column
             val toRow = edge.to.row
             val toCol = edge.to.column
+            val isEdgeMerge = edge.type == EdgeType.Merge
+            val minRow = minOf(fromRow, toRow)
+            val maxRow = maxOf(fromRow, toRow)
+            val minCol = minOf(fromCol, toCol)
+            val maxCol = maxOf(fromCol, toCol)
 
-            val edgeColor = graphColors[fromCol % graphColors.size].border
+            val edgeColor = if (isEdgeMerge) {
+                graphColors[toCol % graphColors.size].border
+            } else graphColors[fromCol % graphColors.size].border
 
-            // L'edge va de fromRow vers toRow (toRow > fromRow car parent est plus ancien)
-            // Cette cellule est a (row, column)
+            if (isEdgeMerge) {
+                when {
+                    // merge arrivant sur ce commit
+                    row == fromRow && fromCol == column -> {
+                        val endX = if (fromCol < toCol) cellWidth else 0f
+                        drawLine(
+                            color = edgeColor,
+                            start = Offset(centerX, centerY),
+                            end = Offset(endX, centerY),
+                            strokeWidth = lineWidthPx,
+                            cap = StrokeCap.Butt
+                        )
+                    }
+
+                    // merge de cette colonne vers ce commit
+                    row == fromRow && toCol == column -> {
+                        if (fromCol < toCol) {
+                            drawRoundedCornerPath(
+                                color = edgeColor,
+                                start = Offset(0f, centerY),
+                                end = Offset(centerX, cellHeight),
+                                strokeWidth = lineWidthPx,
+                                cap = StrokeCap.Butt,
+                                cornerRadius = cornerRadiusPx
+                            )
+                        } else {
+                            drawRoundedCornerPath(
+                                color = edgeColor,
+                                start = Offset(centerX, cellHeight),
+                                end = Offset(cellWidth, centerY),
+                                strokeWidth = lineWidthPx,
+                                cap = StrokeCap.Butt,
+                                cornerRadius = cornerRadiusPx
+                            )
+                        }
+                    }
+
+                    // merge sur cette ligne
+                    row == fromRow && column in minCol..maxCol -> {
+                        drawLine(
+                            color = edgeColor,
+                            start = Offset(0f, centerY),
+                            end = Offset(cellWidth, centerY),
+                            strokeWidth = lineWidthPx,
+                            cap = StrokeCap.Butt
+                        )
+                    }
+
+                    column == toCol && row in minRow..maxRow -> {
+                        val endY = if (row == toRow) centerY else cellHeight
+
+                        drawLine(
+                            color = edgeColor,
+                            start = Offset(centerX, 0f),
+                            end = Offset(centerX, endY),
+                            strokeWidth = lineWidthPx,
+                            cap = StrokeCap.Butt
+                        )
+                    }
+                }
+            } else {
+                when {
+                    // meme branche
+                    toCol == column && fromCol == column && row in minRow..maxRow -> {
+                        val startY = if (row == fromRow) centerY else 0f
+                        val endY = if (row == toRow) centerY else cellHeight
+
+                        drawLine(
+                            color = edgeColor,
+                            start = Offset(centerX, startY),
+                            end = Offset(centerX, endY),
+                            strokeWidth = lineWidthPx,
+                            cap = StrokeCap.Butt
+                        )
+                    }
+
+                    // merge de cette colonne vers ce commit
+                    row == toRow && fromCol == column -> {
+                        if (fromCol < toCol) {
+                            drawRoundedCornerPath(
+                                color = edgeColor,
+                                start = Offset(cellWidth, centerY),
+                                end = Offset(centerX, 0f),
+                                strokeWidth = lineWidthPx,
+                                cap = StrokeCap.Butt,
+                                cornerRadius = cornerRadiusPx
+                            )
+                        } else {
+                            drawRoundedCornerPath(
+                                color = edgeColor,
+                                start = Offset(centerX, 0f),
+                                end = Offset(0f, centerY),
+                                strokeWidth = lineWidthPx,
+                                cap = StrokeCap.Butt,
+                                cornerRadius = cornerRadiusPx
+                            )
+                        }
+                    }
+
+                    fromCol == column && row in minRow.. maxRow -> {
+                        val startY = if (row == fromRow) centerY else 0f
+                        val endY = if (row == toRow) centerY else cellHeight
+
+                        drawLine(
+                            color = edgeColor,
+                            start = Offset(centerX, startY),
+                            end = Offset(centerX, endY),
+                            strokeWidth = lineWidthPx,
+                            cap = StrokeCap.Butt
+                        )
+                    }
+
+                    toRow == row && column == toCol -> {
+                        drawLine(
+                            color = edgeColor,
+                            start = Offset(centerX, centerY),
+                            end = Offset(cellWidth, centerY),
+                            strokeWidth = lineWidthPx,
+                            cap = StrokeCap.Butt
+                        )
+                    }
+
+                    toRow == row && column in minCol.. maxCol -> {
+                        drawLine(
+                            color = edgeColor,
+                            start = Offset(0f, centerY),
+                            end = Offset(cellWidth, centerY),
+                            strokeWidth = lineWidthPx,
+                            cap = StrokeCap.Butt
+                        )
+                    }
+
+                }
+            }
 
             when {
-                // Cas 1: Ligne verticale - meme colonne, la cellule est entre from et to
-                fromCol == column && toCol == column && row in fromRow..toRow -> {
-                    // Dessiner une ligne verticale complete
+
+
+                column == fromCol && row in minRow..maxRow -> {
                     val startY = if (row == fromRow) centerY else 0f
                     val endY = if (row == toRow) centerY else cellHeight
 
-                    drawLine(
+//                    drawLine(
+//                        color = edgeColor,
+//                        start = Offset(centerX, startY),
+//                        end = Offset(centerX, endY),
+//                        strokeWidth = lineWidthPx,
+//                        cap = StrokeCap.Butt
+//                    )
+                }
+
+                column == toCol && row in fromRow..toRow -> {
+                    val startY = if (row == fromRow) centerY else 0f
+                    val endY = if (row == toRow) centerY else cellHeight
+
+//                    drawLine(
+//                        color = edgeColor,
+//                        start = Offset(centerX, startY),
+//                        end = Offset(centerX, endY),
+//                        strokeWidth = lineWidthPx,
+//                        cap = StrokeCap.Butt
+//                    )
+                }
+
+                else -> {
+                    drawCircle(
                         color = edgeColor,
-                        start = Offset(centerX, startY),
-                        end = Offset(centerX, endY),
-                        strokeWidth = lineWidthPx,
-                        cap = StrokeCap.Round
+                        radius = smallLineWidthPx,
+                        center = Offset(centerX, centerY)
                     )
                 }
             }
@@ -109,7 +274,6 @@ fun GraphCell(
 
         // Dessiner le noeud (cercle) si present
         if (nodePosition == column) {
-            val isMerge = edges.any { edge -> edge.type == EdgeType.Merge }
             if (isMerge) {
                 drawCircle(
                     color = color,
@@ -168,25 +332,19 @@ fun getEdgesForCell(row: Int, column: Int, allEdges: List<GraphEdge>): List<Grap
         val toRow = edge.to.row
         val toCol = edge.to.column
 
-        // L'edge est pertinent si:
-        // 1. Cette cellule est le point de depart
-        if (row == fromRow && column == fromCol) return@filter true
+        val minCol = minOf(fromCol, toCol)
+        val maxCol = maxOf(fromCol, toCol)
+        val minRow = minOf(fromRow, toRow)
+        val maxRow = maxOf(fromRow, toRow)
 
-        // 2. Cette cellule est le point d'arrivee
-        if (row == toRow && column == toCol) return@filter true
-
-        // 3. Cette cellule est sur une ligne verticale de l'edge
-        if (fromCol == toCol && column == fromCol && row in fromRow..toRow) return@filter true
-
-        // 4. Cette cellule est sur la diagonale de l'edge
-        if (fromCol != toCol && row in fromRow..toRow) {
-            val minCol = minOf(fromCol, toCol)
-            val maxCol = maxOf(fromCol, toCol)
-            if (column in minCol..maxCol) {
-                return@filter true
-            }
+        if (edge.type == EdgeType.Merge) {
+            if (row == fromRow && column in minCol..maxCol) return@filter true
+            if (column == toCol && row in minRow..maxRow) return@filter true
+        } else {
+            if (row == toRow && column in minCol..maxCol) return@filter true
+            if (column == fromCol && row in minRow..maxRow) return@filter true
         }
 
-        false
+        return@filter false
     }
 }

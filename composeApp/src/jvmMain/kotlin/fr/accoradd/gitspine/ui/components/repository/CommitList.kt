@@ -122,10 +122,7 @@ fun CommitList(
                     modifier = Modifier.fillMaxSize(),
                     state = listState
                 ) {
-                    items(
-                        items = commits,
-                        key = { it.info.id }
-                    ) { commit ->
+                    items(commits) { commit ->
                         CommitRow(
                             commit = commit,
                             columns = columns,
@@ -281,11 +278,10 @@ private fun CommitRow(
                                     for (col in 1 until graphResult.width + 1) {
                                         val cellEdges = getEdgesForCell(commit.row, col, graphResult.edges)
                                         GraphCell(
-                                            row = commit.row,
+                                            commit = commit,
                                             column = col,
                                             nodePosition = position,
                                             edges = cellEdges,
-                                            author = commit.info.author,
                                             gravatars = gravatars
                                         )
                                     }
