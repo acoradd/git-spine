@@ -116,6 +116,7 @@ fun CommitList(
                 totalWidth = totalWidth
             )
 
+            val horizontalGraphScrollState = rememberScrollState()
             // Commit list with scrollbar
             Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(
@@ -133,7 +134,8 @@ fun CommitList(
                                 columnWidths[columnId] = newWidth
                             },
                             gravatars = gravatars,
-                            totalWidth = totalWidth
+                            totalWidth = totalWidth,
+                            horizontalGraphScrollState = horizontalGraphScrollState
                         )
                     }
 
@@ -232,7 +234,8 @@ private fun CommitRow(
     onClick: () -> Unit,
     onWidthChanged: (String, Float) -> Unit,
     gravatars: Map<String, ImageBitmap?>,
-    totalWidth: Float
+    totalWidth: Float,
+    horizontalGraphScrollState: ScrollState
 ) {
     val interactionSource = remember { MutableInteractionSource() }
 
@@ -263,7 +266,7 @@ private fun CommitRow(
                     modifier = Modifier
                         .weight(width)
                         .fillMaxHeight()
-                        .horizontalScroll(rememberScrollState())
+                        .horizontalScroll(if (column.id === "graph") horizontalGraphScrollState else rememberScrollState())
                         .padding(horizontal = padding),
                     contentAlignment = if (index == columns.size - 1) Alignment.CenterEnd else Alignment.CenterStart
                 ) {
