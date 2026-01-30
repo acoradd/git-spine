@@ -239,8 +239,6 @@ private fun CommitRow(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
 
-    println("Loading commit ${commit.info.id}")
-
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()

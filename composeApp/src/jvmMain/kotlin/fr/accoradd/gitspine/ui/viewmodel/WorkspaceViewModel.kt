@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import fr.accoradd.gitspine.domain.model.WorkspaceStatus
 import fr.accoradd.gitspine.domain.repository.GitRepository
 import fr.accoradd.gitspine.domain.usecase.workspace.*
+import fr.accoradd.gitspine.infrastructure.git.GitSession
 import fr.accoradd.gitspine.infrastructure.git.JGitRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -15,8 +17,9 @@ data class WorkspaceState(
     val error: String? = null
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class WorkspaceViewModel(
-    private val gitRepository: GitRepository,
+    private val gitSession: GitSession,
     private val getStatusUseCase: GetStatusUseCase,
     private val stageFileUseCase: StageFileUseCase,
     private val unstageFileUseCase: UnstageFileUseCase,
@@ -31,9 +34,8 @@ class WorkspaceViewModel(
     init {
         // Listen to file watcher events
         viewModelScope.launch {
-            (gitRepository as? JGitRepository)?.statusUpdates?.collect {
-                loadStatus()
-            }
+            gitSession.activeRepository.flatMapLatest { repo -> repo?.fileWatcher?.events ?: flowOf(null) }
+                .collect { loadStatus() }
         }
     }
 
