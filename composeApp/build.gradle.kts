@@ -62,25 +62,41 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "fr.accoradd.gitspine"
+            packageName = "gitspine"
             packageVersion = "1.0.0"
+            description = "GitSpine"
+            vendor = "Accoradd"
 
             windows {
                 iconFile.set(
                     project.file("src/commonMain/composeResources/drawable/logo.ico")
                 )
+                packageName = "GitSpine"
+                menuGroup = "GitSpine"
+                shortcut = true
+                dirChooser = true
+                upgradeUuid = "7F38F64C-F584-4285-B653-DF0A3EA4F508"
             }
 
             macOS {
                 iconFile.set(
                     project.file("src/commonMain/composeResources/drawable/icon.icns")
                 )
+                bundleID = "fr.accoradd.gitspine"
+                packageName = "GitSpine"
+                packageBuildVersion  = packageVersion
+                dmgPackageVersion = packageVersion
             }
 
             linux {
                 iconFile.set(
                     project.file("src/commonMain/composeResources/drawable/logo-256.png")
                 )
+                packageName = "gitspine"
+                debMaintainer = "thomas.darocha@accoradd.fr"
+                menuGroup = "Development"
+                appCategory = "Development"
+                shortcut = true
             }
 
         }

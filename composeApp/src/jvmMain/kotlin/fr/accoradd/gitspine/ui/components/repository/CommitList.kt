@@ -178,7 +178,7 @@ private fun getTableColumns(
         id = "graph",
         title = "Graph",
         defaultWidth = 0.3f,
-        maxWidth = with(density) { graphResult?.width?.let { CELL_SIZE * it }?.toPx()?.let { it / totalWidth } }),
+        maxWidth = with(density) { graphResult?.width?.takeIf { it > 0 }?.let { CELL_SIZE * it }?.toPx()?.let { (it / totalWidth).coerceAtLeast(0.01f) } }),
     TableColumn(id = "message", title = "Message", defaultWidth = 0.4f),
     TableColumn(id = "date", title = "Date", defaultWidth = 0.2f)
 )
@@ -201,7 +201,7 @@ private fun ResizableColumnsHeader(
             verticalAlignment = Alignment.CenterVertically
         ) {
             columns.forEachIndexed { index, column ->
-                val width = columnWidths[column.id] ?: column.defaultWidth
+                val width = (columnWidths[column.id] ?: column.defaultWidth).coerceAtLeast(0.01f)
 
                 // Column header
                 Box(
@@ -258,7 +258,7 @@ private fun CommitRow(
         ) {
             val position = graphResult?.positions[commit.info.id]?.column
             columns.forEachIndexed { index, column ->
-                val width = columnWidths[column.id] ?: column.defaultWidth
+                val width = (columnWidths[column.id] ?: column.defaultWidth).coerceAtLeast(0.01f)
                 val padding = if (column.id == "graph") 0.dp else 12.dp
 
 
