@@ -6,7 +6,10 @@ import fr.accoradd.gitspine.domain.repository.GitRepository
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.lib.ObjectChecker.tag
+import org.eclipse.jgit.revwalk.RevCommit
 import org.eclipse.jgit.revwalk.RevSort
+import org.eclipse.jgit.revwalk.RevTag
 import org.eclipse.jgit.revwalk.RevWalk
 import org.eclipse.jgit.revwalk.filter.CommitTimeRevFilter
 import java.time.Instant
@@ -147,7 +150,7 @@ class JGitRepository(
         emit(remoteBranches)
     }.flowOn(Dispatchers.IO)
 
-    override fun getTags(skip: Int, limit: Int, search: String?): Flow<List<String>> = flow {
+    override fun getTags(skip: Int, limit: Int, search: String?): Flow<List<Tag>> = flow {
         val repository = repoState?.repository ?: run {
             emit(emptyList())
             return@flow
@@ -160,32 +163,26 @@ class JGitRepository(
             val tags = repository.refDatabase.getRefsByPrefix("refs/tags/").asSequence()
                 .map { ref ->
                     val tagName = ref.name.removePrefix("refs/tags/")
-                    // Resolve the tag to get the commit time
                     val objectId = ref.objectId
-                    val commitTime = try {
-                        val revObject = walk.parseAny(objectId)
-                        when (revObject) {
-                            is org.eclipse.jgit.revwalk.RevTag -> {
+                    val commit: RevCommit? = try {
+                        when (val revObject = walk.parseAny(objectId)) {
+                            is RevTag -> {
                                 // If it's an annotated tag, get the tagged object (usually a commit)
                                 val target = walk.parseAny(revObject.`object`)
-                                if (target is org.eclipse.jgit.revwalk.RevCommit) {
-                                    target.commitTime
-                                } else {
-                                    0 // Should not happen for standard tags
-                                }
+                                target as? RevCommit
                             }
 
-                            is org.eclipse.jgit.revwalk.RevCommit -> revObject.commitTime
-                            else -> 0
+                            is RevCommit -> revObject
+                            else -> null
                         }
                     } catch (e: Exception) {
-                        0
+                        null
                     }
-
-                    Triple(tagName, commitTime, ref)
+                    val tag = Tag(tagName, commit?.name ?: objectId.name)
+                    Triple(tag, commit?.commitTime ?: 0, ref)
                 }
-                .filter { (name, _, _) -> filter == null || name.lowercase().contains(filter) }
-                .sortedByDescending { (_, time, _) -> time } // Sort by time descending (newest first)
+                .filter { (tag, _, _) -> filter == null || tag.name.lowercase().contains(filter) }
+                .sortedByDescending { (_, time, _) -> time }
                 .map { (name, _, _) -> name }
                 .drop(skip)
                 .take(limit)

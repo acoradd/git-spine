@@ -26,6 +26,15 @@ data class GraphColors(
     val bg: Color,
 )
 
+data class GraphColorsAlpha(
+    val alphaBorder: Float,
+    val alphaBranchBg: Float,
+    val alphaBg: Float,
+    val colors: List<Color>
+) {
+    val size: Int get() = colors.size
+}
+
 val AppLightThemeColors = AppThemeColors(
     bar = AppThemeColorsBar(
         bg = Color(0xFFEBECF0)
@@ -51,7 +60,6 @@ val AppDarkThemeColors = AppThemeColors(
 )
 
 
-
 val graphColors = listOf(
     GraphColors(Color(0xFF30CE9E), Color(0xFFC9F1E4), Color(0xFFE7F7F2)),
     GraphColors(Color(0xFF17A1C0), Color(0xFFC2E5ED), Color(0xFFE4F2F5)),
@@ -63,4 +71,20 @@ val graphColors = listOf(
     GraphColors(Color(0xFFF25E30), Color(0xFFFAD4C9), Color(0xFFFBEBE7)),
     GraphColors(Color(0xFFF2CA35), Color(0xFFFAF0CA), Color(0xFFFBF7E7)),
     GraphColors(Color(0xFF7CD93A), Color(0xFFDCF3CB), Color(0xFFEFF8E8)),
+)
+
+val graphColorsAlpha = GraphColorsAlpha(
+    1f, 0.2f, 0.1f,
+    listOf(
+        Color(0xFF30CE9E),
+        Color(0xFF17A1C0),
+        Color(0xFF237BF8),
+        Color(0xFF8F02C2),
+        Color(0xFFCF43C3),
+        Color(0xFFD90372),
+        Color(0xFFDA4646),
+        Color(0xFFF25E30),
+        Color(0xFFF2CA35),
+        Color(0xFF7CD93A)
+    )
 )

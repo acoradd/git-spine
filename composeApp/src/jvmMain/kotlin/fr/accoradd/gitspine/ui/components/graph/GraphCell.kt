@@ -18,7 +18,7 @@ import fr.accoradd.gitspine.core.extension.drawRoundedCornerPath
 import fr.accoradd.gitspine.domain.model.EdgeType
 import fr.accoradd.gitspine.domain.model.GraphEdge
 import fr.accoradd.gitspine.ui.components.repository.CommitData
-import fr.accoradd.gitspine.ui.theme.graphColors
+import fr.accoradd.gitspine.ui.theme.graphColorsAlpha
 
 
 val CELL_SIZE = 30.dp
@@ -48,7 +48,7 @@ fun GraphCell(
 ) {
     val row = commit.row
     val author = commit.info.author
-    val color = graphColors[column % graphColors.size].border
+    val color = graphColorsAlpha.colors[column % graphColorsAlpha.size].copy(alpha = graphColorsAlpha.alphaBorder)
 
     val imageBitmap = gravatars[author.email]
 
@@ -67,18 +67,36 @@ fun GraphCell(
         val isMerge = commit.info.parents.size > 1
 
         if (nodePosition != null) {
+            val colorBg = graphColorsAlpha.colors[nodePosition % graphColorsAlpha.size].copy(graphColorsAlpha.alphaBg)
+            val colorBranchBg = graphColorsAlpha.colors[nodePosition % graphColorsAlpha.size].copy(graphColorsAlpha.alphaBranchBg)
             if (nodePosition < column) {
                 drawRect(
-                    color = graphColors[nodePosition % graphColors.size].bg,
+                    color = colorBg,
                     topLeft = Offset(0f, offsetBgTop),
                     size = Size(size.width, bgWidth)
                 )
             } else if (nodePosition == column) {
-                val halfWidth = size.width / 2
                 drawRect(
-                    color = graphColors[nodePosition % graphColors.size].bg,
-                    topLeft = Offset(halfWidth, offsetBgTop),
-                    size = Size(halfWidth, bgWidth)
+                    color = colorBg,
+                    topLeft = Offset(centerX, offsetBgTop),
+                    size = Size(centerX, bgWidth)
+                )
+                if (commit.refs.isNotEmpty()) {
+                    drawLine(
+                        color = colorBranchBg,
+                        start = Offset(0f, centerY),
+                        end = Offset(centerX, centerY),
+                        strokeWidth = smallLineWidthPx,
+                        cap = StrokeCap.Butt
+                    )
+                }
+            } else if (commit.refs.isNotEmpty()) {
+                drawLine(
+                    color = colorBranchBg,
+                    start = Offset(0f, centerY),
+                    end = Offset(cellWidth, centerY),
+                    strokeWidth = smallLineWidthPx,
+                    cap = StrokeCap.Butt
                 )
             }
         }
@@ -96,8 +114,8 @@ fun GraphCell(
             val maxCol = maxOf(fromCol, toCol)
 
             val edgeColor = if (isEdgeMerge) {
-                graphColors[toCol % graphColors.size].border
-            } else graphColors[fromCol % graphColors.size].border
+                graphColorsAlpha.colors[toCol % graphColorsAlpha.size].copy(alpha = graphColorsAlpha.alphaBorder)
+            } else graphColorsAlpha.colors[fromCol % graphColorsAlpha.size].copy(alpha = graphColorsAlpha.alphaBorder)
 
             val isPhantom = edge.type == EdgeType.Phantom
 
@@ -329,7 +347,7 @@ fun GraphCell(
                     }
                 } else {
                     drawCircle(
-                        color = graphColors[column % graphColors.size].bg,
+                        color = graphColorsAlpha.colors[column % graphColorsAlpha.size].copy(alpha = graphColorsAlpha.alphaBg),
                         radius = circleRadiusPx - lineWidthPx,
                         center = Offset(centerX, centerY)
                     )

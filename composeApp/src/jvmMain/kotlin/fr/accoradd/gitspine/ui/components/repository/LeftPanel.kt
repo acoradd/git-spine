@@ -22,6 +22,7 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.dp
 import fr.accoradd.gitspine.domain.model.Branch
+import fr.accoradd.gitspine.domain.model.Tag
 import fr.accoradd.gitspine.ui.components.common.HorizontalDivider
 import fr.accoradd.gitspine.ui.components.common.SectionHeader
 import fr.accoradd.gitspine.ui.components.common.SimpleTextField
@@ -38,11 +39,11 @@ fun RepositoryLeftPanel(
 
     localBranches: List<Branch>,
     remoteBranches: List<Branch>,
-    tags: List<String> = emptyList(),
+    tags: List<Tag> = emptyList(),
 
     // Callbacks
     onBranchClick: (String) -> Unit = {},
-    onTagClick: (String) -> Unit = {},
+    onTagClick: (Tag) -> Unit = {},
 
     onSearch: (String, Boolean, Boolean, Boolean) -> Unit,
 
@@ -211,8 +212,8 @@ private fun ColumnScope.SectionBranch(
 private fun ColumnScope.SectionTag(
     expanded: Boolean,
     toggleExpanded: () -> Unit,
-    tags: List<String>,
-    onTagClick: (String) -> Unit,
+    tags: List<Tag>,
+    onTagClick: (Tag) -> Unit,
     hasMoreTags: Boolean,
     onLoadMoreTags: () -> Unit
 ) {
@@ -330,7 +331,7 @@ private fun RemoteHeader(remoteName: String) {
 
 @Composable
 private fun TagItem(
-    tag: String,
+    tag: Tag,
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -357,12 +358,12 @@ private fun TagItem(
         ) {
             Icon(
                 key = AllIconsKeys.General.Pin,
-                contentDescription = tag
+                contentDescription = tag.name
             )
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            Text(text = tag)
+            Text(text = tag.name)
         }
     }
 }

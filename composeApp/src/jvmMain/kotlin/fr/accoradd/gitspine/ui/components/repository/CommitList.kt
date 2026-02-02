@@ -9,10 +9,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -22,16 +23,22 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import fr.accoradd.gitspine.domain.model.Branch
 import fr.accoradd.gitspine.domain.model.Commit
 import fr.accoradd.gitspine.domain.model.GraphResult
+import fr.accoradd.gitspine.domain.model.RefCommit
 import fr.accoradd.gitspine.ui.components.graph.CELL_SIZE
 import fr.accoradd.gitspine.ui.components.graph.GraphCell
 import fr.accoradd.gitspine.ui.components.graph.getEdgesForCell
-import fr.accoradd.gitspine.ui.theme.graphColors
+import fr.accoradd.gitspine.ui.theme.graphColorsAlpha
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
+import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.Tooltip
 import org.jetbrains.jewel.ui.component.VerticalScrollbar
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.window.defaultTitleBarStyle
 import java.awt.Cursor
 
@@ -48,7 +55,8 @@ data class CommitData(
     val info: Commit,
     val date: String,
     val isSelected: Boolean = false,
-    val row: Int = 0
+    val row: Int = 0,
+    val refs: List<RefCommit> = listOf()
 )
 
 @Composable
@@ -117,10 +125,11 @@ fun CommitList(
                 totalWidth = totalWidth
             )
 
-            Spacer(modifier = Modifier
-                .height(1.dp)
-                .fillMaxWidth()
-                .background(JewelTheme.defaultTitleBarStyle.colors.background)
+            Spacer(
+                modifier = Modifier
+                    .height(1.dp)
+                    .fillMaxWidth()
+                    .background(JewelTheme.defaultTitleBarStyle.colors.background)
             )
 
             val horizontalGraphScrollState = rememberScrollState()
@@ -185,7 +194,10 @@ private fun getTableColumns(
         id = "graph",
         title = "Graph",
         defaultWidth = 0.3f,
-        maxWidth = with(density) { graphResult?.width?.takeIf { it > 0 }?.let { CELL_SIZE * it }?.toPx()?.let { (it / totalWidth).coerceAtLeast(0.01f) } }),
+        maxWidth = with(density) {
+            graphResult?.width?.takeIf { it > 0 }?.let { CELL_SIZE * it }?.toPx()
+                ?.let { (it / totalWidth).coerceAtLeast(0.01f) }
+        }),
     TableColumn(id = "message", title = "Message", defaultWidth = 0.4f),
     TableColumn(id = "date", title = "Date", defaultWidth = 0.2f)
 )
@@ -231,6 +243,7 @@ private fun ResizableColumnsHeader(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CommitRow(
     commit: CommitData,
@@ -265,20 +278,104 @@ private fun CommitRow(
             val position = graphResult?.positions[commit.info.id]?.column
             columns.forEachIndexed { index, column ->
                 val width = (columnWidths[column.id] ?: column.defaultWidth).coerceAtLeast(0.01f)
-                val padding = if (column.id == "graph") 0.dp else 12.dp
+                val padding = if (column.id == "graph" || column.id === "branch") 0.dp else 12.dp
+                val commitColor = graphColorsAlpha.colors[(position ?: 0) % graphColorsAlpha.size].copy(alpha = graphColorsAlpha.alphaBranchBg)
 
 
                 Box(
                     modifier = Modifier
                         .weight(width)
                         .fillMaxHeight()
-                        .horizontalScroll(if (column.id === "graph") horizontalGraphScrollState else rememberScrollState())
+                        .then(
+                            when (column.id) {
+                                "graph" -> Modifier.horizontalScroll(horizontalGraphScrollState)
+                                "message" -> Modifier.horizontalScroll(rememberScrollState())
+                                else -> Modifier
+                            }
+                        )
                         .padding(horizontal = padding),
                     contentAlignment = if (index == columns.size - 1) Alignment.CenterEnd else Alignment.CenterStart
                 ) {
                     when (column.id) {
                         "branch" -> {
-                            Text(text = "")
+                            if (commit.refs.isNotEmpty()) {
+                                Row(
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalArrangement = Arrangement.Start,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Row(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(2.dp))
+                                            .weight(0.8f)
+                                            .background(commitColor)
+                                            .padding(horizontal = 4.dp, vertical = 0.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        val ref = commit.refs.first()
+                                        val isBranch = ref is Branch
+                                        val isLocal = isBranch && !ref.isRemote
+                                        val hasLocalBranch = isLocal && commit.refs.any {
+                                            it is Branch && it.isRemote && ref.name == it.name.substringAfter(
+                                                "/",
+                                                it.name
+                                            )
+                                        }
+                                        Tooltip(
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp).weight(1f),
+
+                                            tooltip = {
+                                                Text(
+                                                    text = if (isBranch && !isLocal) ref.name.substringAfter("/", ref.name) else ref.name,
+                                                    maxLines = 1
+                                                )
+                                            }
+                                        ) {
+                                            Text(
+                                                text = if (isBranch && !isLocal) ref.name.substringAfter("/", ref.name) else ref.name,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                softWrap = false,
+                                                modifier = Modifier.fillMaxWidth(),
+                                                style = JewelTheme.defaultTextStyle.copy(fontSize = 12.sp)
+                                            )
+                                        }
+
+                                        if (isBranch) {
+                                            Row(
+                                                modifier = Modifier.width(if(isLocal && hasLocalBranch) 30.dp else 14.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.End
+                                            ) {
+                                                Icon(
+                                                    key = if (isLocal) AllIconsKeys.Vcs.Branch else AllIconsKeys.Javaee.WebService,
+                                                    contentDescription = "",
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                                if (isLocal && hasLocalBranch) {
+                                                    Spacer(modifier = Modifier.width(2.dp))
+
+                                                    Icon(
+                                                        key = AllIconsKeys.Javaee.WebService,
+                                                        contentDescription = "",
+                                                        modifier = Modifier.size(14.dp)
+                                                    )
+                                                }
+                                            }
+
+                                        }
+
+
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(0.2f)
+                                            .height(1.dp).background(commitColor)
+                                    )
+                                }
+
+                            }
                         }
 
                         "graph" -> {
@@ -298,15 +395,6 @@ private fun CommitRow(
                             } else {
                                 Text(text = "●")
                             }
-                        }
-
-                        "hash" -> {
-                            Text(
-                                text = commit.info.shortId,
-                                maxLines = 1,
-                                overflow = TextOverflow.Visible,
-                                style = JewelTheme.editorTextStyle
-                            )
                         }
 
                         "message" -> {
@@ -335,7 +423,7 @@ private fun CommitRow(
                     totalWidth,
                     column,
                     onWidthChanged,
-                    color = if (column.id === "graph") position?.let { graphColors[it % graphColors.size].border } else null,
+                    color = if (column.id === "graph") position?.let { graphColorsAlpha.colors[it % graphColorsAlpha.size].copy(alpha = graphColorsAlpha.alphaBorder) } else null,
                     sliderModifier = if (column.id === "graph") Modifier.width(2.dp).padding(vertical = 2.dp) else null
                 )
             }

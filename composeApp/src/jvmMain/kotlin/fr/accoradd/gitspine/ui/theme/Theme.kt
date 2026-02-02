@@ -1,10 +1,10 @@
 package fr.accoradd.gitspine.ui.theme
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import fr.accoradd.gitspine.infrastructure.system.SystemThemeDetector
+import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.GlobalColors
+import org.jetbrains.jewel.foundation.GlobalMetrics
+import org.jetbrains.jewel.foundation.GlobalMetrics.Companion
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.*
 import org.jetbrains.jewel.intui.window.decoratedWindow

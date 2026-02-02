@@ -12,11 +12,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.coerceAtLeast
-import androidx.compose.ui.unit.coerceIn
 import androidx.compose.ui.unit.dp
 import fr.accoradd.gitspine.domain.model.*
 import fr.accoradd.gitspine.ui.components.repository.RepositoryResizablePanes
@@ -131,7 +129,10 @@ fun RepositoryScreen(
                     onItemClick = { repositoryScreenViewModel.onClickCommit(it) },
                     onLoadMore = { repositoryScreenViewModel.loadCommits() },
                     hasMore = hasMoreCommits.value,
-                    gravatars = gravatars.value
+                    gravatars = gravatars.value,
+                    localBranches = localBranches.value,
+                    remoteBranches = remoteBranches.value,
+                    tags = tags.value
                 )
             }
         )
@@ -205,7 +206,10 @@ private fun CenterPanel(
     onItemClick: (CommitOrWip) -> Unit,
     onLoadMore: () -> Unit,
     hasMore: Boolean,
-    gravatars: Map<String, ImageBitmap?>
+    gravatars: Map<String, ImageBitmap?>,
+    localBranches: List<Branch>,
+    remoteBranches: List<Branch>,
+    tags: List<Tag>
 ) {
     val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm") }
     val hasWip = workspaceStatus.hasChanges
@@ -240,7 +244,10 @@ private fun CenterPanel(
                         )
                     ),
                     isSelected = selectedItem is CommitOrWip.CommitItem && selectedItem.commit.id == commit.id,
-                    row = row
+                    row = row,
+                    refs = localBranches.filter { it.commitId == commit.id }
+                        + remoteBranches.filter { it.commitId == commit.id && !it.name.endsWith("/HEAD") }
+                        + tags.filter { it.commitId == commit.id }
                 )
             )
         }

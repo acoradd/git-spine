@@ -2,6 +2,7 @@ package fr.accoradd.gitspine.domain.repository
 
 import fr.accoradd.gitspine.domain.model.Branch
 import fr.accoradd.gitspine.domain.model.Commit
+import fr.accoradd.gitspine.domain.model.Tag
 import fr.accoradd.gitspine.domain.model.WorkspaceStatus
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
@@ -28,7 +29,7 @@ interface GitRepository {
     // Load remote branches with pagination and search
     fun getRemoteBranches(skip: Int = 0, limit: Int = 100, search: String? = null): Flow<List<Branch>>
 
-    fun getTags(skip: Int = 0, limit: Int = 100, search: String? = null): Flow<List<String>>
+    fun getTags(skip: Int = 0, limit: Int = 100, search: String? = null): Flow<List<Tag>>
 
     // Workspace status
     suspend fun getStatus(): WorkspaceStatus

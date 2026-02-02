@@ -31,18 +31,4 @@ object jewelColors {
     @ReadOnlyComposable
     fun blue(index: Int): Color = JewelTheme.globalColors.text.info
 
-    /**
-     * Yellow colors mapped to warning colors
-     */
-    @Composable
-    @ReadOnlyComposable
-    fun yellow(index: Int): Color = JewelTheme.globalColors.text.warning
 }
-
-/**
- * Access to the default text style
- */
-val jewelTextStyle
-    @Composable
-    @ReadOnlyComposable
-    get() = JewelTheme.defaultTextStyle

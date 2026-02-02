@@ -7,6 +7,7 @@ import fr.accoradd.gitspine.domain.model.Branch
 import fr.accoradd.gitspine.domain.model.Commit
 import fr.accoradd.gitspine.domain.model.CommitOrWip
 import fr.accoradd.gitspine.domain.model.GraphResult
+import fr.accoradd.gitspine.domain.model.Tag
 import fr.accoradd.gitspine.domain.repository.GitRepository
 import fr.accoradd.gitspine.domain.usecase.graph.GraphUseCase
 import fr.accoradd.gitspine.domain.usecase.workspace.LoadGravatarUseCase
@@ -29,7 +30,7 @@ class RepositoryScreenViewModel(
 
     private val _localBranches = MutableStateFlow<List<Branch>>(emptyList())
     private val _remoteBranches = MutableStateFlow<List<Branch>>(emptyList())
-    private val _tags = MutableStateFlow<List<String>>(emptyList())
+    private val _tags = MutableStateFlow<List<Tag>>(emptyList())
 
     private val _commits = MutableStateFlow<List<Commit>>(emptyList())
     private val _commit = MutableStateFlow<CommitOrWip?>(null)
@@ -50,7 +51,7 @@ class RepositoryScreenViewModel(
 
     val localBranches: StateFlow<List<Branch>> = _localBranches.asStateFlow()
     val remoteBranches: StateFlow<List<Branch>> = _remoteBranches.asStateFlow()
-    val tags: StateFlow<List<String>> = _tags.asStateFlow()
+    val tags: StateFlow<List<Tag>> = _tags.asStateFlow()
     val commits: StateFlow<List<Commit>> = _commits.asStateFlow()
     val commit: StateFlow<CommitOrWip?> = _commit.asStateFlow()
     val graphResult: StateFlow<GraphResult?> = _graphResult.asStateFlow()
