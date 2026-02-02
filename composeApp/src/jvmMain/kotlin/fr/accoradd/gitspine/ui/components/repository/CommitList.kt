@@ -298,7 +298,8 @@ private fun CommitRow(
                             Text(
                                 text = commit.info.shortId,
                                 maxLines = 1,
-                                overflow = TextOverflow.Visible
+                                overflow = TextOverflow.Visible,
+                                style = JewelTheme.editorTextStyle
                             )
                         }
 
@@ -314,7 +315,8 @@ private fun CommitRow(
                             Text(
                                 text = commit.date,
                                 maxLines = 1,
-                                overflow = TextOverflow.Visible
+                                overflow = TextOverflow.Visible,
+                                style = JewelTheme.editorTextStyle
                             )
                         }
                     }
