@@ -93,7 +93,7 @@ class JGitRepository(
         }
 
         emit(commits)
-    }
+    }.flowOn(Dispatchers.IO)
 
     override fun getLocalBranches(search: String?): Flow<List<Branch>> = flow {
         val repository = repoState?.repository ?: run {
@@ -119,7 +119,7 @@ class JGitRepository(
             .toList()
 
         emit(localBranches)
-    }
+    }.flowOn(Dispatchers.IO)
 
     override fun getRemoteBranches(skip: Int, limit: Int, search: String?): Flow<List<Branch>> = flow {
         val repository = repoState?.repository ?: run {
@@ -145,7 +145,7 @@ class JGitRepository(
             .toList()
 
         emit(remoteBranches)
-    }
+    }.flowOn(Dispatchers.IO)
 
     override fun getTags(skip: Int, limit: Int, search: String?): Flow<List<String>> = flow {
         val repository = repoState?.repository ?: run {
@@ -195,7 +195,7 @@ class JGitRepository(
         } finally {
             walk.close()
         }
-    }
+    }.flowOn(Dispatchers.IO)
 
     override suspend fun getStatus(): WorkspaceStatus = withContext(Dispatchers.IO) {
         val repository = repoState?.repository ?: return@withContext WorkspaceStatus()
