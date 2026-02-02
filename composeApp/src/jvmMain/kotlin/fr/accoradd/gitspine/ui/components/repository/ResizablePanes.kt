@@ -1,4 +1,4 @@
-package fr.accoradd.gitspine.ui.components.common
+package fr.accoradd.gitspine.ui.components.repository
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -15,25 +15,22 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import jdk.internal.org.jline.utils.Colors.h
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import java.awt.Cursor
 
 @Composable
-fun ThreeColumnResizablePanes(
+fun RepositoryResizablePanes(
     leftContent: @Composable () -> Unit,
     centerContent: @Composable () -> Unit,
-    rightContent: @Composable () -> Unit,
-    hideRightContent: Boolean = false,
     modifier: Modifier = Modifier,
     initialLeftWidth: Float = 0.2f,
-    initialRightWidth: Float = 0.25f,
     minPaneWidth: Float = 0.15f
 ) {
     var leftWidth by remember { mutableStateOf(initialLeftWidth) }
-    var rightWidth by remember { mutableStateOf(initialRightWidth) }
     var leftWidthAtStartOfDrag by remember { mutableStateOf(initialLeftWidth) }
-    var rightWidthAtStartOfDrag by remember { mutableStateOf(initialRightWidth) }
 
     val density = LocalDensity.current
     val cornerRadius = 8.dp
@@ -57,7 +54,7 @@ fun ThreeColumnResizablePanes(
                         val ratio = leftWidthAtStartOfDrag + (deltaX / availableWidth)
                         val newLeftWidth = ratio.coerceIn(
                             minPaneWidth,
-                            1f - rightWidth - minPaneWidth
+                            1f - minPaneWidth
                         )
                         leftWidth = newLeftWidth
                     }
@@ -65,24 +62,6 @@ fun ThreeColumnResizablePanes(
 
                 // Center pane
                 Pane(cornerRadius = cornerRadius) { centerContent() }
-
-                // Right divider
-                HorizontalSpacer(
-                    width = spacerWidth,
-                    enableDrag = !hideRightContent,
-                    onDragStart = { rightWidthAtStartOfDrag = rightWidth },
-                    onPositionChange = { deltaX ->
-                        val ratio = rightWidthAtStartOfDrag - (deltaX / availableWidth)
-                        val newRightWidth = ratio.coerceIn(
-                            minPaneWidth,
-                            1f - leftWidth - minPaneWidth
-                        )
-                        rightWidth = newRightWidth
-                    }
-                )
-
-                // Right pane
-                Pane(cornerRadius = cornerRadius) { rightContent() }
             }
         ) { measurables, constraints ->
             val width = constraints.maxWidth
@@ -91,8 +70,7 @@ fun ThreeColumnResizablePanes(
             val dividerWidth = spacerWidth.roundToPx()
 
             val leftPaneWidth = (availableWidth * leftWidth).toInt()
-            val rightPaneWidth = if (hideRightContent) 0 else (availableWidth * rightWidth).toInt()
-            val centerPaneWidth = width - leftPaneWidth - rightPaneWidth - (dividerWidth * 2)
+            val centerPaneWidth = width - leftPaneWidth - dividerWidth
 
             // Measure children
             val leftPlaceable = measurables[0].measure(
@@ -103,12 +81,6 @@ fun ThreeColumnResizablePanes(
             )
             val centerPlaceable = measurables[2].measure(
                 Constraints.fixed(centerPaneWidth, height)
-            )
-            val rightDividerPlaceable = measurables[3].measure(
-                Constraints.fixed(dividerWidth, height)
-            )
-            val rightPlaceable = measurables[4].measure(
-                Constraints.fixed(rightPaneWidth, height)
             )
 
             layout(width, height) {
@@ -122,11 +94,6 @@ fun ThreeColumnResizablePanes(
 
                 centerPlaceable.placeRelative(x, 0)
                 x += centerPaneWidth
-
-                rightDividerPlaceable.placeRelative(x, 0)
-                x += dividerWidth
-
-                rightPlaceable.placeRelative(x, 0)
             }
         }
     }
@@ -134,7 +101,7 @@ fun ThreeColumnResizablePanes(
 
 @Composable
 private fun Pane(
-    cornerRadius: androidx.compose.ui.unit.Dp,
+    cornerRadius: Dp,
     content: @Composable () -> Unit
 ) {
     // Remplacement de Surface par Box avec background Jewel
@@ -148,14 +115,15 @@ private fun Pane(
 }
 
 @Composable
-private fun HorizontalSpacer(
-    width: androidx.compose.ui.unit.Dp,
+fun HorizontalSpacer(
+    width: Dp,
     enableDrag: Boolean = true,
+    modifier: Modifier = Modifier,
     onDragStart: () -> Unit,
     onPositionChange: (absoluteX: Float) -> Unit
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxHeight()
             .width(width)
             .pointerHoverIcon(if (enableDrag) PointerIcon(Cursor(Cursor.E_RESIZE_CURSOR)) else PointerIcon.Default)

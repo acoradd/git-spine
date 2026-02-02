@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -116,6 +117,12 @@ fun CommitList(
                 totalWidth = totalWidth
             )
 
+            Spacer(modifier = Modifier
+                .height(1.dp)
+                .fillMaxWidth()
+                .background(JewelTheme.defaultTitleBarStyle.colors.background)
+            )
+
             val horizontalGraphScrollState = rememberScrollState()
             // Commit list with scrollbar
             Box(modifier = Modifier.fillMaxSize()) {
@@ -194,7 +201,6 @@ private fun ResizableColumnsHeader(
         modifier = Modifier
             .fillMaxWidth()
             .height(30.dp)
-            .border(1.dp, JewelTheme.defaultTitleBarStyle.colors.background)
     ) {
         Row(
             modifier = Modifier.fillMaxSize(),

@@ -1,16 +1,28 @@
 package fr.accoradd.gitspine.ui.screens.repository
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.coerceAtLeast
+import androidx.compose.ui.unit.coerceIn
 import androidx.compose.ui.unit.dp
 import fr.accoradd.gitspine.domain.model.*
-import fr.accoradd.gitspine.ui.components.common.ThreeColumnResizablePanes
+import fr.accoradd.gitspine.ui.components.repository.RepositoryResizablePanes
 import fr.accoradd.gitspine.ui.components.repository.CommitData
 import fr.accoradd.gitspine.ui.components.repository.CommitList
+import fr.accoradd.gitspine.ui.components.repository.HorizontalSpacer
 import fr.accoradd.gitspine.ui.components.repository.RepositoryLeftPanel
 import fr.accoradd.gitspine.ui.components.workspace.WorkspaceChangesPanel
 import fr.accoradd.gitspine.ui.theme.jewelColors
@@ -47,6 +59,11 @@ fun RepositoryScreen(
     val graphResult = repositoryScreenViewModel.graphResult.collectAsState()
     val gravatars = repositoryScreenViewModel.gravatars.collectAsState()
 
+    val density = LocalDensity.current
+
+    var rightWidth by remember { mutableStateOf(400.dp) }
+    var rightWidthAtStartOfDrag by remember { mutableStateOf(400.dp) }
+
     LaunchedEffect(path) {
         repositoryScreenViewModel.open(Path.of(path))
         workspaceViewModel.loadStatus()
@@ -76,14 +93,13 @@ fun RepositoryScreen(
         repositoryScreenViewModel.refreshGraph(workspaceState.status.hasChanges)
     }
 
-    Column(
+    Box(
         modifier = Modifier.fillMaxSize()
-            .background(JewelTheme.defaultTitleBarStyle.colors.background)
+            .background(JewelTheme.defaultTitleBarStyle.colors.background).padding(horizontal = 28.dp)
     ) {
-        ThreeColumnResizablePanes(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 28.dp),
+        RepositoryResizablePanes(
+            modifier = Modifier.fillMaxSize(),
             initialLeftWidth = 0.2f,
-            initialRightWidth = 0.25f,
             leftContent = {
                 RepositoryLeftPanel(
                     repositoryScreenViewModel,
@@ -117,23 +133,66 @@ fun RepositoryScreen(
                     hasMore = hasMoreCommits.value,
                     gravatars = gravatars.value
                 )
-            },
-            hideRightContent = selectedItem.value == null,
-            rightContent = {
-                RightPanel(
-                    selectedItem = selectedItem.value,
-                    workspaceStatus = workspaceState.status,
-                    onStageFile = { path -> workspaceViewModel.stageFile(path) },
-                    onUnstageFile = { path -> workspaceViewModel.unstageFile(path) },
-                    onStageAll = { workspaceViewModel.stageAll() },
-                    onUnstageAll = { workspaceViewModel.unstageAll() },
-                    onDiscardChanges = { path, staged -> workspaceViewModel.discardChanges(path, staged) },
-                    onStageFiles = { paths -> workspaceViewModel.stageFiles(paths) },
-                    onUnstageFiles = { paths -> workspaceViewModel.unstageFiles(paths) },
-                    onDiscardFilesChanges = { paths, staged -> workspaceViewModel.discardFilesChanges(paths, staged) }
-                )
             }
         )
+        if (selectedItem.value != null) {
+            // Panneau latéral droit
+            AnimatedVisibility(
+                visible = selectedItem.value != null,
+                enter = slideInHorizontally(
+                    initialOffsetX = { it },
+                    animationSpec = tween(300)
+                ),
+                exit = slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(300)
+                ),
+                modifier = Modifier.align(Alignment.CenterEnd)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(rightWidth + 4.dp)
+                        .background(JewelTheme.defaultTitleBarStyle.colors.background),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    HorizontalSpacer(
+                        width = 4.dp,
+                        onDragStart = { rightWidthAtStartOfDrag = rightWidth },
+                        onPositionChange = { deltaX ->
+                            with(density) {
+                                rightWidth = (rightWidthAtStartOfDrag - deltaX.toDp()).coerceAtLeast(200.dp)
+                            }
+                        }
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(rightWidth)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(JewelTheme.globalColors.panelBackground)
+                    ) {
+                        RightPanel(
+                            selectedItem = selectedItem.value,
+                            workspaceStatus = workspaceState.status,
+                            onStageFile = { path -> workspaceViewModel.stageFile(path) },
+                            onUnstageFile = { path -> workspaceViewModel.unstageFile(path) },
+                            onStageAll = { workspaceViewModel.stageAll() },
+                            onUnstageAll = { workspaceViewModel.unstageAll() },
+                            onDiscardChanges = { path, staged -> workspaceViewModel.discardChanges(path, staged) },
+                            onStageFiles = { paths -> workspaceViewModel.stageFiles(paths) },
+                            onUnstageFiles = { paths -> workspaceViewModel.unstageFiles(paths) },
+                            onDiscardFilesChanges = { paths, staged ->
+                                workspaceViewModel.discardFilesChanges(
+                                    paths,
+                                    staged
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
