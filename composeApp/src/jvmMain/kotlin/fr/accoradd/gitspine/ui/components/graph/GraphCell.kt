@@ -227,10 +227,11 @@ fun GraphCell(
                     }
 
                     toRow == row && column == toCol -> {
+                        val endX = if (column < fromCol) cellWidth else 0f
                         drawLine(
                             color = edgeColor,
                             start = Offset(centerX, centerY),
-                            end = Offset(cellWidth, centerY),
+                            end = Offset(endX, centerY),
                             strokeWidth = lineWidthPx,
                             cap = StrokeCap.Butt
                         )
