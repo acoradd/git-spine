@@ -5,7 +5,7 @@ import java.nio.file.Path
 object AppDataPath {
     private const val APP_NAME = "GitSpine"
 
-    fun getConfigDir(): Path {
+    fun getDataDir(): Path {
         val os = System.getProperty("os.name").lowercase()
         return when {
             os.contains("win") -> {

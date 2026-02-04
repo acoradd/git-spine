@@ -25,7 +25,7 @@ class JsonSettings : Settings {
     }
 
     private val mutex = Mutex()
-    private val filePath: Path = AppDataPath.getConfigDir().resolve(FILE_NAME)
+    private val filePath: Path = AppDataPath.getDataDir().resolve(FILE_NAME)
 
     private var data: SettingsData = loadFromDisk()
 

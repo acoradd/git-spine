@@ -60,7 +60,6 @@ fun RepositoryScreen(
     val selectedItem = repositoryScreenViewModel.commit.collectAsState()
     val hasMoreCommits = repositoryScreenViewModel.hasMoreCommits.collectAsState()
     val graphResult = repositoryScreenViewModel.graphResult.collectAsState()
-    val gravatars = repositoryScreenViewModel.gravatars.collectAsState()
 
     val density = LocalDensity.current
 
@@ -122,7 +121,6 @@ fun RepositoryScreen(
                     onItemClick = { repositoryScreenViewModel.onClickCommit(it) },
                     onLoadMore = { repositoryScreenViewModel.loadCommits() },
                     hasMore = hasMoreCommits.value,
-                    gravatars = gravatars.value,
                     localBranches = localBranches.value,
                     remoteBranches = remoteBranches.value,
                     tags = tags.value
@@ -199,7 +197,6 @@ private fun CenterPanel(
     onItemClick: (CommitOrWip) -> Unit,
     onLoadMore: () -> Unit,
     hasMore: Boolean,
-    gravatars: Map<String, ImageBitmap?>,
     localBranches: List<Branch>,
     remoteBranches: List<Branch>,
     tags: List<Tag>
@@ -257,8 +254,7 @@ private fun CenterPanel(
             }
         },
         onLoadMore = onLoadMore,
-        hasMore = hasMore,
-        gravatars = gravatars
+        hasMore = hasMore
     )
 }
 

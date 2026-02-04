@@ -28,6 +28,10 @@ kotlin {
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
             implementation(libs.koin.composeVM)
+
+            // Coil
+            implementation(libs.coil)
+            implementation(libs.coil.okhttp)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

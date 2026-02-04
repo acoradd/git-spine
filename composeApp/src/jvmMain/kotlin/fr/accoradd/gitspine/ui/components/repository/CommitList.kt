@@ -66,7 +66,6 @@ fun CommitList(
     onCommitClick: (CommitData) -> Unit = {},
     onLoadMore: () -> Unit = {},
     hasMore: Boolean = false,
-    gravatars: Map<String, ImageBitmap?>
 ) {
     val density = LocalDensity.current
 
@@ -149,7 +148,6 @@ fun CommitList(
                             onWidthChanged = { columnId, newWidth ->
                                 columnWidths[columnId] = newWidth
                             },
-                            gravatars = gravatars,
                             totalWidth = totalWidth,
                             horizontalGraphScrollState = horizontalGraphScrollState
                         )
@@ -252,7 +250,6 @@ private fun CommitRow(
     graphResult: GraphResult?,
     onClick: () -> Unit,
     onWidthChanged: (String, Float) -> Unit,
-    gravatars: Map<String, ImageBitmap?>,
     totalWidth: Float,
     horizontalGraphScrollState: ScrollState
 ) {
@@ -387,8 +384,7 @@ private fun CommitRow(
                                             commit = commit,
                                             column = col,
                                             nodePosition = position,
-                                            edges = cellEdges,
-                                            gravatars = gravatars
+                                            edges = cellEdges
                                         )
                                     }
                                 }

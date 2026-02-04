@@ -1,16 +1,10 @@
 package fr.accoradd.gitspine.ui.viewmodel
 
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import fr.accoradd.gitspine.domain.model.Branch
-import fr.accoradd.gitspine.domain.model.Commit
-import fr.accoradd.gitspine.domain.model.CommitOrWip
-import fr.accoradd.gitspine.domain.model.GraphResult
-import fr.accoradd.gitspine.domain.model.Tag
+import fr.accoradd.gitspine.domain.model.*
 import fr.accoradd.gitspine.domain.repository.GitRepository
 import fr.accoradd.gitspine.domain.usecase.graph.GraphUseCase
-import fr.accoradd.gitspine.domain.usecase.workspace.LoadGravatarUseCase
 import fr.accoradd.gitspine.infrastructure.git.GitSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,11 +16,8 @@ import java.nio.file.Path
 class RepositoryScreenViewModel(
     private val gitSession: GitSession,
     private val gitRepository: GitRepository,
-    private val graphUseCase: GraphUseCase,
-    private val loadGravatarUseCase: LoadGravatarUseCase
+    private val graphUseCase: GraphUseCase
 ) : ViewModel() {
-
-    private val _gravatars = mutableMapOf<String, ImageBitmap?>()
 
     private val _localBranches = MutableStateFlow<List<Branch>>(emptyList())
     private val _remoteBranches = MutableStateFlow<List<Branch>>(emptyList())
@@ -35,9 +26,6 @@ class RepositoryScreenViewModel(
     private val _commits = MutableStateFlow<List<Commit>>(emptyList())
     private val _commit = MutableStateFlow<CommitOrWip?>(null)
     private val _graphResult = MutableStateFlow<GraphResult?>(null)
-
-    private val _gravatarsState = MutableStateFlow(_gravatars.toMap())
-
 
     private val _searchQuery = MutableStateFlow("")
     private val _localBranchesFilter = MutableStateFlow<List<Branch>>(emptyList())
@@ -58,7 +46,6 @@ class RepositoryScreenViewModel(
     val commits: StateFlow<List<Commit>> = _commits.asStateFlow()
     val commit: StateFlow<CommitOrWip?> = _commit.asStateFlow()
     val graphResult: StateFlow<GraphResult?> = _graphResult.asStateFlow()
-    val gravatars: StateFlow<Map<String, ImageBitmap?>> = _gravatarsState.asStateFlow()
 
     val localBranchesFilter: StateFlow<List<Branch>> = _localBranchesFilter.asStateFlow()
     val remoteBranchesFilter: StateFlow<List<Branch>> = _remoteBranchesFilter.asStateFlow()
@@ -97,11 +84,13 @@ class RepositoryScreenViewModel(
     }
 
     private fun updateLocalBranchsFilters() {
-        _localBranchesFilter.value = _localBranches.value.filter { it.name.contains(_searchQuery.value, ignoreCase = true) }
+        _localBranchesFilter.value =
+            _localBranches.value.filter { it.name.contains(_searchQuery.value, ignoreCase = true) }
     }
 
     private fun updateRemoteBranchsFilters() {
-        _remoteBranchesFilter.value = _remoteBranches.value.filter { it.name.contains(_searchQuery.value, ignoreCase = true) }
+        _remoteBranchesFilter.value =
+            _remoteBranches.value.filter { it.name.contains(_searchQuery.value, ignoreCase = true) }
     }
 
     private fun updateTagsFilters() {
@@ -183,8 +172,6 @@ class RepositoryScreenViewModel(
                     _commits.value += loadedCommits
                     _hasMoreCommits.value = loadedCommits.size == limit
                     isLoadingCommit = false
-
-                    loadGravatars(loadedCommits)
                 }
             } catch (e: Exception) {
                 println("Error loading more commits: ${e.message}")
@@ -244,21 +231,6 @@ class RepositoryScreenViewModel(
             val headCommitId = gitRepository.getHeadCommitId()
             val result = graphUseCase.invoke(hasWip, commits, headCommitId)
             _graphResult.value = result
-        }
-    }
-
-    private fun loadGravatars(emails: List<Commit>) {
-        viewModelScope.launch {
-            emails.mapTo(mutableSetOf()) { it.author.email }
-                .forEach { email -> loadGravatarOfAuthor(email) }
-            _gravatarsState.emit(_gravatars.toMap())
-        }
-    }
-
-    private suspend fun loadGravatarOfAuthor(email: String) {
-        if (!_gravatars.containsKey(email)) {
-            _gravatars.putIfAbsent(email, null)
-            _gravatars[email] = loadGravatarUseCase.invoke(email)
         }
     }
 }

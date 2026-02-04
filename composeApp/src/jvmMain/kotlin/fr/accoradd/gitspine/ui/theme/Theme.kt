@@ -1,10 +1,14 @@
 package fr.accoradd.gitspine.ui.theme
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.remember
+import coil3.ImageLoader
+import coil3.compose.LocalPlatformContext
+import fr.accoradd.gitspine.infrastructure.image.ImageLoaderFactory
+import fr.accoradd.gitspine.infrastructure.image.ImageManager
 import org.jetbrains.jewel.foundation.GlobalColors
-import org.jetbrains.jewel.foundation.GlobalMetrics
-import org.jetbrains.jewel.foundation.GlobalMetrics.Companion
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.*
 import org.jetbrains.jewel.intui.window.decoratedWindow
@@ -15,6 +19,14 @@ import org.jetbrains.jewel.window.styling.TitleBarColors
 import org.jetbrains.jewel.window.styling.TitleBarStyle
 import fr.accoradd.gitspine.core.settings.Theme as AppTheme
 
+val LocalImageLoader = compositionLocalOf<ImageLoader> {
+    error("ImageLoader not provided")
+}
+
+val LocalImageManager = compositionLocalOf<ImageManager> {
+    error("ImageManager not provided")
+}
+
 @Composable
 fun AppTheme(
     appTheme: AppTheme = AppTheme.SYSTEM,
@@ -23,6 +35,11 @@ fun AppTheme(
 ) {
     val textStyle = JewelTheme.createDefaultTextStyle()
     val editorStyle = JewelTheme.createEditorTextStyle()
+
+
+    val context = LocalPlatformContext.current
+    val imageLoader = remember { ImageLoaderFactory.create(context) }
+    val imageManager = remember { ImageManager() }
 
     val isDark = when (appTheme) {
         AppTheme.DARK -> true
@@ -54,25 +71,31 @@ fun AppTheme(
         )
     }
 
-    IntUiTheme(
-        theme = theme,
-        styling = ComponentStyling.default().decoratedWindow(
-            titleBarStyle = if (isDark) {
-                TitleBarStyle.dark(
-                    colors = TitleBarColors.dark(
-                        backgroundColor = themeColors.bar.bg,
-                        borderColor = themeColors.bar.bg,
+
+    CompositionLocalProvider(
+        LocalImageLoader provides imageLoader,
+        LocalImageManager provides imageManager
+    ) {
+        IntUiTheme(
+            theme = theme,
+            styling = ComponentStyling.default().decoratedWindow(
+                titleBarStyle = if (isDark) {
+                    TitleBarStyle.dark(
+                        colors = TitleBarColors.dark(
+                            backgroundColor = themeColors.bar.bg,
+                            borderColor = themeColors.bar.bg,
+                        )
                     )
-                )
-            } else {
-                TitleBarStyle.lightWithLightHeader(
-                    colors = TitleBarColors.lightWithLightHeader(
-                        backgroundColor = themeColors.bar.bg,
-                        borderColor = themeColors.bar.bg
+                } else {
+                    TitleBarStyle.lightWithLightHeader(
+                        colors = TitleBarColors.lightWithLightHeader(
+                            backgroundColor = themeColors.bar.bg,
+                            borderColor = themeColors.bar.bg
+                        )
                     )
-                )
-            },
-        ),
-        content = content
-    )
+                },
+            ),
+            content = content
+        )
+    }
 }

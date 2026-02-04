@@ -25,7 +25,7 @@ class JsonRecentRepositoryStore : RecentRepositoryStore {
     }
 
     private val mutex = Mutex()
-    private val filePath: Path = AppDataPath.getConfigDir().resolve(FILE_NAME)
+    private val filePath: Path = AppDataPath.getDataDir().resolve(FILE_NAME)
 
     private val _recentRepositories = MutableStateFlow<List<RecentRepository>>(emptyList())
     override val recentRepositories: Flow<List<RecentRepository>> = _recentRepositories.asStateFlow()

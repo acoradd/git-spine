@@ -55,13 +55,11 @@ val appModule = module {
     factory { UnStashUseCase(get()) }
     factory { CreateBranchUseCase(get()) }
 
-    factory { LoadGravatarUseCase() }
-
     // ViewModels
     single { TitlebarViewModel(get()) }
     single { ProjectViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     single { AppViewModel(get(), get(), get()) }
     viewModel { WelcomeScreenViewModel(get()) }
-    viewModel { RepositoryScreenViewModel(get(), get(), get(), get()) }
+    viewModel { RepositoryScreenViewModel(get(), get(), get()) }
     viewModel { WorkspaceViewModel(get(), get(), get(), get(), get(), get(), get()) }
 }
