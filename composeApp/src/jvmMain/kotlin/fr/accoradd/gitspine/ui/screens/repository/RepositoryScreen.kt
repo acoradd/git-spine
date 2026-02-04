@@ -49,8 +49,13 @@ fun RepositoryScreen(
 
     val localBranches = repositoryScreenViewModel.localBranches.collectAsState()
     val remoteBranches = repositoryScreenViewModel.remoteBranches.collectAsState()
-    val commits = repositoryScreenViewModel.commits.collectAsState()
     val tags = repositoryScreenViewModel.tags.collectAsState()
+
+    val localBranchesFilter = repositoryScreenViewModel.localBranchesFilter.collectAsState()
+    val remoteBranchesFilter = repositoryScreenViewModel.remoteBranchesFilter.collectAsState()
+    val tagsFilter = repositoryScreenViewModel.tagsFilter.collectAsState()
+
+    val commits = repositoryScreenViewModel.commits.collectAsState()
 
     val selectedItem = repositoryScreenViewModel.commit.collectAsState()
     val hasMoreCommits = repositoryScreenViewModel.hasMoreCommits.collectAsState()
@@ -100,24 +105,12 @@ fun RepositoryScreen(
             initialLeftWidth = 0.2f,
             leftContent = {
                 RepositoryLeftPanel(
-                    repositoryScreenViewModel,
-                    localBranches = localBranches.value,
-                    remoteBranches = remoteBranches.value,
-                    tags = tags.value,
+                    localBranches = localBranchesFilter.value,
+                    remoteBranches = remoteBranchesFilter.value,
+                    tags = tagsFilter.value,
                     onBranchClick = { /* ... */ },
                     onTagClick = { /* ... */ },
-                    onSearch = { query, localExpanded, remoteExpanded, tagsExpanded ->
-                        repositoryScreenViewModel.setSearchQuery(query)
-                        if (localExpanded) {
-                            repositoryScreenViewModel.loadLocalBranches()
-                        }
-                        if (remoteExpanded) {
-                            repositoryScreenViewModel.loadRemoteBranches(true)
-                        }
-                        if (tagsExpanded) {
-                            repositoryScreenViewModel.loadTags(true)
-                        }
-                    },
+                    onSearch = { query -> repositoryScreenViewModel.setSearchQuery(query) },
                 )
             },
             centerContent = {

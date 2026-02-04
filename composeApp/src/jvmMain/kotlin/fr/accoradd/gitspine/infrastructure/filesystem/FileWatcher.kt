@@ -161,6 +161,7 @@ class FileWatcher(
                 debounceJob = scope.launch {
                     delay(500)
                     if (pendingGitDirChange || pendingWorkspaceChange) {
+                        println("Emitting event for ${fullPath.pathString}")
                         _events.emit(
                             WatcherEvent.WorkspaceChanged(
                                 hasGitDirChanged = pendingGitDirChange

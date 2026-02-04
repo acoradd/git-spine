@@ -27,9 +27,9 @@ interface GitRepository {
     fun getLocalBranches(search: String? = null): Flow<List<Branch>>
 
     // Load remote branches with pagination and search
-    fun getRemoteBranches(skip: Int = 0, limit: Int = 100, search: String? = null): Flow<List<Branch>>
+    fun getRemoteBranches(): Flow<List<Branch>>
 
-    fun getTags(skip: Int = 0, limit: Int = 100, search: String? = null): Flow<List<Tag>>
+    fun getTags(): Flow<List<Tag>>
 
     // Workspace status
     suspend fun getStatus(): WorkspaceStatus

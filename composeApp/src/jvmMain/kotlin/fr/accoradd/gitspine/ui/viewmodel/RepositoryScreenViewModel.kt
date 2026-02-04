@@ -40,6 +40,9 @@ class RepositoryScreenViewModel(
 
 
     private val _searchQuery = MutableStateFlow("")
+    private val _localBranchesFilter = MutableStateFlow<List<Branch>>(emptyList())
+    private val _remoteBranchesFilter = MutableStateFlow<List<Branch>>(emptyList())
+    private val _tagsFilter = MutableStateFlow<List<Tag>>(emptyList())
     private val _hasMoreRemoteBranch = MutableStateFlow(false)
     private val _hasMoreTags = MutableStateFlow(false)
     private val _hasMoreCommits = MutableStateFlow(false)
@@ -57,8 +60,10 @@ class RepositoryScreenViewModel(
     val graphResult: StateFlow<GraphResult?> = _graphResult.asStateFlow()
     val gravatars: StateFlow<Map<String, ImageBitmap?>> = _gravatarsState.asStateFlow()
 
-    val hasMoreRemoteBranch: StateFlow<Boolean> = _hasMoreRemoteBranch.asStateFlow()
-    val hasMoreTags: StateFlow<Boolean> = _hasMoreTags.asStateFlow()
+    val localBranchesFilter: StateFlow<List<Branch>> = _localBranchesFilter.asStateFlow()
+    val remoteBranchesFilter: StateFlow<List<Branch>> = _remoteBranchesFilter.asStateFlow()
+    val tagsFilter: StateFlow<List<Tag>> = _tagsFilter.asStateFlow()
+
     val hasMoreCommits: StateFlow<Boolean> = _hasMoreCommits.asStateFlow()
 
 
@@ -68,6 +73,8 @@ class RepositoryScreenViewModel(
 
         loadCommits(reset = true)
         loadLocalBranches()
+        loadRemoteBranches()
+        loadTags()
     }
 
     fun close(path: Path?) {
@@ -80,6 +87,25 @@ class RepositoryScreenViewModel(
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
+        updateRefsFilters()
+    }
+
+    private fun updateRefsFilters() {
+        updateLocalBranchsFilters()
+        updateRemoteBranchsFilters()
+        updateTagsFilters()
+    }
+
+    private fun updateLocalBranchsFilters() {
+        _localBranchesFilter.value = _localBranches.value.filter { it.name.contains(_searchQuery.value, ignoreCase = true) }
+    }
+
+    private fun updateRemoteBranchsFilters() {
+        _remoteBranchesFilter.value = _remoteBranches.value.filter { it.name.contains(_searchQuery.value, ignoreCase = true) }
+    }
+
+    private fun updateTagsFilters() {
+        _tagsFilter.value = _tags.value.filter { it.name.contains(_searchQuery.value, ignoreCase = true) }
     }
 
     fun loadLocalBranches() {
@@ -90,6 +116,7 @@ class RepositoryScreenViewModel(
             try {
                 gitRepository.getLocalBranches(search = _searchQuery.value).collect { loadedBranches ->
                     _localBranches.value = loadedBranches
+                    updateLocalBranchsFilters()
                     isLoadingLocalBranch = false
                 }
             } catch (e: Exception) {
@@ -99,23 +126,16 @@ class RepositoryScreenViewModel(
         }
     }
 
-    fun loadRemoteBranches(reset: Boolean = false) {
+    fun loadRemoteBranches() {
         if (isLoadingRemoteBranch) return
         isLoadingRemoteBranch = true
 
-        val skip = if (reset) 0 else _remoteBranches.value.size
-        val limit = 100
-
         viewModelScope.launch {
             try {
-                gitRepository.getRemoteBranches(skip = skip, limit = limit, search = _searchQuery.value)
+                gitRepository.getRemoteBranches()
                     .collect { loadedBranches ->
-                        if (reset) {
-                            _remoteBranches.value = loadedBranches
-                        } else {
-                            _remoteBranches.value += loadedBranches
-                        }
-                        _hasMoreRemoteBranch.value = loadedBranches.size == limit
+                        _remoteBranches.value = loadedBranches
+                        updateRemoteBranchsFilters()
                         isLoadingRemoteBranch = false
                     }
             } catch (e: Exception) {
@@ -125,22 +145,15 @@ class RepositoryScreenViewModel(
         }
     }
 
-    fun loadTags(reset: Boolean = false) {
+    fun loadTags() {
         if (isLoadingTag) return
 
         isLoadingTag = true
-        val skip = if (reset) 0 else _tags.value.size
-        val limit = 100
-
         viewModelScope.launch {
             try {
-                gitRepository.getTags(skip = skip, limit = limit, search = _searchQuery.value).collect { loadedTags ->
-                    if (reset) {
-                        _tags.value = loadedTags
-                    } else {
-                        _tags.value += loadedTags
-                    }
-                    _hasMoreTags.value = loadedTags.size == limit
+                gitRepository.getTags().collect { loadedTags ->
+                    _tags.value = loadedTags
+                    updateTagsFilters()
                     isLoadingTag = false
                 }
             } catch (e: Exception) {
@@ -184,14 +197,17 @@ class RepositoryScreenViewModel(
 
     fun clearLocalBranches() {
         _localBranches.value = emptyList()
+        _localBranchesFilter.value = emptyList()
     }
 
     fun clearRemoteBranches() {
         _remoteBranches.value = emptyList()
+        _remoteBranchesFilter.value = emptyList()
     }
 
     fun clearTags() {
         _tags.value = emptyList()
+        _tagsFilter.value = emptyList()
     }
 
     private fun clearCommits() {

@@ -3,17 +3,16 @@ package fr.accoradd.gitspine.infrastructure.git
 import fr.accoradd.gitspine.core.notifications.NotificationManager
 import fr.accoradd.gitspine.domain.model.*
 import fr.accoradd.gitspine.domain.repository.GitRepository
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.withContext
 import org.eclipse.jgit.api.Git
-import org.eclipse.jgit.lib.ObjectChecker.tag
 import org.eclipse.jgit.revwalk.RevCommit
 import org.eclipse.jgit.revwalk.RevSort
 import org.eclipse.jgit.revwalk.RevTag
 import org.eclipse.jgit.revwalk.RevWalk
 import org.eclipse.jgit.revwalk.filter.CommitTimeRevFilter
 import java.time.Instant
-import java.util.Date
 
 class JGitRepository(
     private val session: GitSession,
@@ -124,15 +123,14 @@ class JGitRepository(
         emit(localBranches)
     }.flowOn(Dispatchers.IO)
 
-    override fun getRemoteBranches(skip: Int, limit: Int, search: String?): Flow<List<Branch>> = flow {
+    override fun getRemoteBranches(): Flow<List<Branch>> = flow {
         val repository = repoState?.repository ?: run {
             emit(emptyList())
             return@flow
         }
 
-        val filter = search?.lowercase()
-
         val remoteBranches = repository.refDatabase.getRefsByPrefix("refs/remotes/").asSequence()
+            .filter { !it.name.endsWith("HEAD") }
             .map { ref ->
                 Branch(
                     name = ref.name.removePrefix("refs/remotes/"),
@@ -141,22 +139,18 @@ class JGitRepository(
                     commitId = ref.objectId.name
                 )
             }
-            .filter { filter == null || it.name.lowercase().contains(filter) }
             .sortedBy { it.name }
-            .drop(skip)
-            .take(limit)
             .toList()
 
         emit(remoteBranches)
     }.flowOn(Dispatchers.IO)
 
-    override fun getTags(skip: Int, limit: Int, search: String?): Flow<List<Tag>> = flow {
+    override fun getTags(): Flow<List<Tag>> = flow {
         val repository = repoState?.repository ?: run {
             emit(emptyList())
             return@flow
         }
 
-        val filter = search?.lowercase()
         val walk = RevWalk(repository)
 
         try {
@@ -181,11 +175,8 @@ class JGitRepository(
                     val tag = Tag(tagName, commit?.name ?: objectId.name)
                     Triple(tag, commit?.commitTime ?: 0, ref)
                 }
-                .filter { (tag, _, _) -> filter == null || tag.name.lowercase().contains(filter) }
                 .sortedByDescending { (_, time, _) -> time }
                 .map { (name, _, _) -> name }
-                .drop(skip)
-                .take(limit)
                 .toList()
 
             emit(tags)

@@ -26,8 +26,6 @@ import fr.accoradd.gitspine.domain.model.Tag
 import fr.accoradd.gitspine.ui.components.common.HorizontalDivider
 import fr.accoradd.gitspine.ui.components.common.SectionHeader
 import fr.accoradd.gitspine.ui.components.common.SimpleTextField
-import fr.accoradd.gitspine.ui.theme.jewelColors
-import fr.accoradd.gitspine.ui.viewmodel.RepositoryScreenViewModel
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
@@ -35,8 +33,6 @@ import org.jetbrains.jewel.window.defaultTitleBarStyle
 
 @Composable
 fun RepositoryLeftPanel(
-    repositoryScreenViewModel: RepositoryScreenViewModel,
-
     localBranches: List<Branch>,
     remoteBranches: List<Branch>,
     tags: List<Tag> = emptyList(),
@@ -45,7 +41,7 @@ fun RepositoryLeftPanel(
     onBranchClick: (String) -> Unit = {},
     onTagClick: (Tag) -> Unit = {},
 
-    onSearch: (String, Boolean, Boolean, Boolean) -> Unit,
+    onSearch: (String) -> Unit,
 
     modifier: Modifier = Modifier
 ) {
@@ -63,31 +59,16 @@ fun RepositoryLeftPanel(
     var remoteExpanded by remember { mutableStateOf(false) }
     var tagsExpanded by remember { mutableStateOf(false) }
 
-    val hasMoreRemoteBranches = repositoryScreenViewModel.hasMoreRemoteBranch.collectAsState()
-    val hasMoreTags = repositoryScreenViewModel.hasMoreTags.collectAsState()
-
     Column(
         modifier = modifier.fillMaxSize()
     ) {
 
-        SearchRef(
-            onSearch = {
-                onSearch(it, localExpanded, remoteExpanded, tagsExpanded)
-            }
-        )
+        SearchRef(onSearch = { onSearch(it) })
 
         SectionBranch(
             "Local",
             expanded = localExpanded,
-            toggleExpanded = {
-                localExpanded = !localExpanded
-
-                if (localExpanded) {
-                    repositoryScreenViewModel.loadLocalBranches()
-                } else {
-                    repositoryScreenViewModel.clearLocalBranches()
-                }
-            },
+            toggleExpanded = { localExpanded = !localExpanded },
             branches = localBranches,
             branchesNamesByOrigin = localBranchesNames,
             selectedBranch = selectedBranch,
@@ -97,38 +78,18 @@ fun RepositoryLeftPanel(
         SectionBranch(
             "Remote",
             expanded = remoteExpanded,
-            toggleExpanded = {
-                remoteExpanded = !remoteExpanded
-
-                if (remoteExpanded) {
-                    repositoryScreenViewModel.loadRemoteBranches(true)
-                } else {
-                    repositoryScreenViewModel.clearRemoteBranches()
-                }
-            },
+            toggleExpanded = { remoteExpanded = !remoteExpanded },
             branches = remoteBranches,
             branchesNamesByOrigin = remoteBranchesMap,
             selectedBranch = selectedBranch,
-            onBranchClick = onBranchClick,
-            hasMoreBranches = hasMoreRemoteBranches.value,
-            onLoadMoreBranches = { repositoryScreenViewModel.loadRemoteBranches() }
+            onBranchClick = onBranchClick
         )
 
         SectionTag(
             expanded = tagsExpanded,
-            toggleExpanded = {
-                tagsExpanded = !tagsExpanded
-
-                if (tagsExpanded) {
-                    repositoryScreenViewModel.loadTags(true)
-                } else {
-                    repositoryScreenViewModel.clearTags()
-                }
-            },
+            toggleExpanded = { tagsExpanded = !tagsExpanded },
             tags = tags,
-            onTagClick = onTagClick,
-            hasMoreTags = hasMoreTags.value,
-            onLoadMoreTags = { repositoryScreenViewModel.loadTags() }
+            onTagClick = onTagClick
         )
     }
 }
@@ -141,9 +102,7 @@ private fun ColumnScope.SectionBranch(
     branches: List<Branch>,
     branchesNamesByOrigin: Map<String, List<String>>,
     selectedBranch: String?,
-    onBranchClick: (String) -> Unit,
-    hasMoreBranches: Boolean = false,
-    onLoadMoreBranches: () -> Unit = {},
+    onBranchClick: (String) -> Unit
 ) {
     var expandedFolders by remember { mutableStateOf(emptySet<String>()) }
 
@@ -198,9 +157,6 @@ private fun ColumnScope.SectionBranch(
                         )
                     }
                 }
-                if (hasMoreBranches) {
-                    item { LoadMoreButton(onClick = onLoadMoreBranches) }
-                }
             }
         }
 
@@ -213,9 +169,7 @@ private fun ColumnScope.SectionTag(
     expanded: Boolean,
     toggleExpanded: () -> Unit,
     tags: List<Tag>,
-    onTagClick: (Tag) -> Unit,
-    hasMoreTags: Boolean,
-    onLoadMoreTags: () -> Unit
+    onTagClick: (Tag) -> Unit
 ) {
     SectionHeader(
         title = "Tags",
@@ -234,9 +188,6 @@ private fun ColumnScope.SectionTag(
                             tag = tag,
                             onClick = { onTagClick(tag) }
                         )
-                    }
-                    if (hasMoreTags) {
-                        item { LoadMoreButton(onClick = onLoadMoreTags) }
                     }
                 }
             }
