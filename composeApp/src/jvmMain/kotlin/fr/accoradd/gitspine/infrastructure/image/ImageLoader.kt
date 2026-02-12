@@ -9,7 +9,11 @@ import okio.Path.Companion.toOkioPath
 
 object ImageLoaderFactory {
     fun create(context: PlatformContext): ImageLoader {
-        return ImageLoader.Builder(context)
+        lateinit var imageLoader: ImageLoader
+        imageLoader = ImageLoader.Builder(context)
+            .components {
+                add(FallbackImageInterceptor({imageLoader}))
+            }
             .memoryCache {
                 MemoryCache.Builder()
                     .maxSizePercent(context, 0.25)
@@ -23,5 +27,6 @@ object ImageLoaderFactory {
             }
             .eventListener(LoggingEventListener())
             .build()
+        return imageLoader
     }
 }

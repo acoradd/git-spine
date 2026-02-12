@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asSkiaBitmap
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
@@ -24,13 +25,23 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.Bitmap
+import coil3.BitmapImage
+import coil3.asImage
+import coil3.compose.LocalPlatformContext
+import coil3.size.Size
+import fr.accoradd.gitspine.core.config.AppConfig
 import fr.accoradd.gitspine.domain.model.Branch
 import fr.accoradd.gitspine.domain.model.Commit
 import fr.accoradd.gitspine.domain.model.GraphResult
 import fr.accoradd.gitspine.domain.model.RefCommit
+import fr.accoradd.gitspine.infrastructure.image.FallbackType
+import fr.accoradd.gitspine.infrastructure.image.IdenticonGenerator
 import fr.accoradd.gitspine.ui.components.graph.CELL_SIZE
 import fr.accoradd.gitspine.ui.components.graph.GraphCell
 import fr.accoradd.gitspine.ui.components.graph.getEdgesForCell
+import fr.accoradd.gitspine.ui.theme.LocalImageLoader
+import fr.accoradd.gitspine.ui.theme.LocalImageManager
 import fr.accoradd.gitspine.ui.theme.graphColorsAlpha
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
@@ -149,7 +160,8 @@ fun CommitList(
                                 columnWidths[columnId] = newWidth
                             },
                             totalWidth = totalWidth,
-                            horizontalGraphScrollState = horizontalGraphScrollState
+                            horizontalGraphScrollState = horizontalGraphScrollState,
+                            density = density
                         )
                     }
 
@@ -251,9 +263,30 @@ private fun CommitRow(
     onClick: () -> Unit,
     onWidthChanged: (String, Float) -> Unit,
     totalWidth: Float,
-    horizontalGraphScrollState: ScrollState
+    horizontalGraphScrollState: ScrollState,
+    density: Density
 ) {
+    val imageLoader = LocalImageLoader.current
+    val platformContext = LocalPlatformContext.current
+    val imageManager = LocalImageManager.current
+    val author = commit.info.author
+
     val interactionSource = remember { MutableInteractionSource() }
+    var imageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+
+    LaunchedEffect(author.email) {
+        val imageUrl = AppConfig.getGravatarUrl(author.email)
+        imageBitmap = with(density) {
+            val imgSize = 32.dp.toPx().toInt()
+            return@with imageManager.loadImage(
+                pathOrUrl = imageUrl,
+                imageLoader = imageLoader,
+                context = platformContext,
+                cacheKey = imageUrl,
+                size = Size(imgSize, imgSize)
+            )
+        }
+    }
 
     BoxWithConstraints(
         modifier = Modifier
@@ -384,6 +417,7 @@ private fun CommitRow(
                                             commit = commit,
                                             column = col,
                                             nodePosition = position,
+                                            imageBitmap = imageBitmap,
                                             edges = cellEdges
                                         )
                                     }

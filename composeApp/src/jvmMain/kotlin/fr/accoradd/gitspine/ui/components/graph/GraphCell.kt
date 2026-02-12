@@ -3,37 +3,21 @@ package fr.accoradd.gitspine.ui.components.graph
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.asComposeImageBitmap
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import coil3.compose.LocalPlatformContext
-import coil3.request.ImageRequest
-import coil3.request.SuccessResult
-import coil3.toBitmap
-import fr.accoradd.gitspine.core.config.AppConfig
 import fr.accoradd.gitspine.core.extension.drawRoundedCornerPath
 import fr.accoradd.gitspine.domain.model.EdgeType
 import fr.accoradd.gitspine.domain.model.GraphEdge
 import fr.accoradd.gitspine.ui.components.repository.CommitData
-import fr.accoradd.gitspine.ui.theme.LocalImageLoader
-import fr.accoradd.gitspine.ui.theme.LocalImageManager
 import fr.accoradd.gitspine.ui.theme.graphColorsAlpha
-import org.jetbrains.skiko.toBufferedImage
 
 
 val CELL_SIZE = 30.dp
@@ -58,21 +42,12 @@ fun GraphCell(
     column: Int,
     nodePosition: Int?,
     edges: List<GraphEdge>,
+    imageBitmap: ImageBitmap?,
     modifier: Modifier = Modifier
 ) {
-    val imageLoader = LocalImageLoader.current
-    val platformContext = LocalPlatformContext.current
-    val imageManager = LocalImageManager.current
-    val row = commit.row
-    val author = commit.info.author
     val color = graphColorsAlpha.colors[column % graphColorsAlpha.size].copy(alpha = graphColorsAlpha.alphaBorder)
 
-    var imageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
-
-    LaunchedEffect(author.email) {
-        val imageUrl = AppConfig.getGravatarUrl(author.email)
-        imageBitmap = imageManager.loadImage(imageUrl, imageLoader, platformContext)
-    }
+    val row = commit.row
 
     Canvas(modifier = modifier.size(CELL_SIZE)) {
         val cellWidth = size.width
@@ -90,7 +65,8 @@ fun GraphCell(
 
         if (nodePosition != null) {
             val colorBg = graphColorsAlpha.colors[nodePosition % graphColorsAlpha.size].copy(graphColorsAlpha.alphaBg)
-            val colorBranchBg = graphColorsAlpha.colors[nodePosition % graphColorsAlpha.size].copy(graphColorsAlpha.alphaBranchBg)
+            val colorBranchBg =
+                graphColorsAlpha.colors[nodePosition % graphColorsAlpha.size].copy(graphColorsAlpha.alphaBranchBg)
             if (nodePosition < column) {
                 drawRect(
                     color = colorBg,
@@ -253,7 +229,7 @@ fun GraphCell(
                         }
                     }
 
-                    fromCol == column && row in minRow.. maxRow -> {
+                    fromCol == column && row in minRow..maxRow -> {
                         val startY = if (row == fromRow) centerY else 0f
                         val endY = if (row == toRow) centerY else cellHeight
 
@@ -277,7 +253,7 @@ fun GraphCell(
                         )
                     }
 
-                    toRow == row && column in minCol.. maxCol -> {
+                    toRow == row && column in minCol..maxCol -> {
                         drawLine(
                             color = edgeColor,
                             start = Offset(0f, centerY),

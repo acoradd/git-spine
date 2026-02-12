@@ -15,7 +15,7 @@ import kotlinx.coroutines.delay
 import java.security.MessageDigest
 
 fun String.toMD5(): String {
-    val bytes = MessageDigest.getInstance("MD5").digest(this.toByteArray())
+    val bytes = MessageDigest.getInstance("MD5").digest(this.trim().lowercase().toByteArray())
     return bytes.joinToString("") { "%02x".format(it) }
 }
 
