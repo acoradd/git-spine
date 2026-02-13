@@ -79,11 +79,15 @@ fun RepositoryScreen(
     val selectedItem = repositoryScreenViewModel.commit.collectAsState()
     val hasMoreCommits = repositoryScreenViewModel.hasMoreCommits.collectAsState()
     val graphResult = repositoryScreenViewModel.graphResult.collectAsState()
+    val scrollToCommitId = repositoryScreenViewModel.scrollToCommitId.collectAsState()
 
     val density = LocalDensity.current
 
     var rightWidth by remember { mutableStateOf(400.dp) }
     var rightWidthAtStartOfDrag by remember { mutableStateOf(400.dp) }
+
+    // Track first visible commit for scroll restoration
+    var firstVisibleCommitId by remember { mutableStateOf<String?>(null) }
 
     // Context menu state
     var contextMenuState by remember { mutableStateOf(CommitContextMenuState()) }
@@ -175,7 +179,10 @@ fun RepositoryScreen(
                     localBranches = localBranches.value,
                     remoteBranches = remoteBranches.value,
                     tags = tags.value,
-                    refContextMenuState
+                    refContextMenuState = refContextMenuState,
+                    scrollToCommitId = scrollToCommitId.value,
+                    onScrollRestored = { repositoryScreenViewModel.clearScrollRestoreTarget() },
+                    onFirstVisibleCommitChanged = { firstVisibleCommitId = it }
                 )
             }
         )
@@ -243,6 +250,9 @@ fun RepositoryScreen(
             state = contextMenuState,
             onDismiss = { contextMenuState = CommitContextMenuState() },
             onAction = { action ->
+                // Save scroll position before actions that refresh the list
+                repositoryScreenViewModel.setScrollRestoreTarget(firstVisibleCommitId)
+
                 when (action) {
                     is CommitContextMenuAction.Checkout -> {
                         repositoryScreenViewModel.checkout(action.commit.id)
@@ -271,6 +281,9 @@ fun RepositoryScreen(
             state = refContextMenuState,
             onDismiss = { refContextMenuState = RefContextMenuState() },
             onAction = { action ->
+                // Save scroll position before actions that refresh the list
+                repositoryScreenViewModel.setScrollRestoreTarget(firstVisibleCommitId)
+
                 when (action) {
                     is RefContextMenuAction.CheckoutRef -> {
                         val refName = if (action.ref is Branch) action.ref.name else action.ref.name
@@ -340,7 +353,10 @@ private fun CenterPanel(
     localBranches: List<Branch>,
     remoteBranches: List<Branch>,
     tags: List<Tag>,
-    refContextMenuState: RefContextMenuState
+    refContextMenuState: RefContextMenuState,
+    scrollToCommitId: String? = null,
+    onScrollRestored: () -> Unit = {},
+    onFirstVisibleCommitChanged: (String?) -> Unit = {}
 ) {
     val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm") }
     val hasWip = workspaceStatus.hasChanges
@@ -402,7 +418,10 @@ private fun CenterPanel(
         onRefRightClick = onRefRightClick,
         onLoadMore = onLoadMore,
         hasMore = hasMore,
-        refContextMenuState = refContextMenuState
+        refContextMenuState = refContextMenuState,
+        scrollToCommitId = scrollToCommitId,
+        onScrollRestored = onScrollRestored,
+        onFirstVisibleCommitChanged = onFirstVisibleCommitChanged
     )
 }
 

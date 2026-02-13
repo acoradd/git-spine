@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.*
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -73,7 +74,10 @@ fun CommitList(
     onRefRightClick: (RefCommit, Commit, Offset) -> Unit = { _, _, _ -> },
     onLoadMore: () -> Unit = {},
     hasMore: Boolean = false,
-    refContextMenuState: RefContextMenuState? = null
+    refContextMenuState: RefContextMenuState? = null,
+    scrollToCommitId: String? = null,
+    onScrollRestored: () -> Unit = {},
+    onFirstVisibleCommitChanged: (String?) -> Unit = {}
 ) {
     val density = LocalDensity.current
 
@@ -95,6 +99,43 @@ fun CommitList(
         }
 
         val listState = rememberLazyListState()
+
+        // Track first visible commit using snapshotFlow for reliable updates
+        LaunchedEffect(commits) {
+            if (commits.isEmpty()) return@LaunchedEffect
+
+            // Immediately report current position
+            val currentIndex = listState.firstVisibleItemIndex
+            if (currentIndex in commits.indices) {
+                val commitId = commits[currentIndex].info.id
+                if (commitId != "WIP") {
+                    onFirstVisibleCommitChanged(commitId)
+                }
+            }
+
+            // Then track changes
+            snapshotFlow { listState.firstVisibleItemIndex }
+                .distinctUntilChanged()
+                .collect { firstVisibleIndex ->
+                    if (firstVisibleIndex in commits.indices) {
+                        val commitId = commits[firstVisibleIndex].info.id
+                        if (commitId != "WIP") {
+                            onFirstVisibleCommitChanged(commitId)
+                        }
+                    }
+                }
+        }
+
+        // Scroll to target commit when both scrollToCommitId and commits are ready
+        LaunchedEffect(scrollToCommitId, commits.size) {
+            if (scrollToCommitId != null && commits.isNotEmpty()) {
+                val targetIndex = commits.indexOfFirst { it.info.id == scrollToCommitId }
+                if (targetIndex >= 0) {
+                    listState.scrollToItem(targetIndex)
+                    onScrollRestored()
+                }
+            }
+        }
 
         LaunchedEffect(graphResult?.width, density, totalWidth) {
             columns = getTableColumns(density, graphResult, totalWidth)

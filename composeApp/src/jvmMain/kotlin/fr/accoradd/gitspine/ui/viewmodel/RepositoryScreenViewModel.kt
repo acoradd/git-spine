@@ -34,6 +34,8 @@ class RepositoryScreenViewModel(
     private val _hasMoreRemoteBranch = MutableStateFlow(false)
     private val _hasMoreTags = MutableStateFlow(false)
     private val _hasMoreCommits = MutableStateFlow(false)
+    private val _scrollToCommitId = MutableStateFlow<String?>(null)
+    private var _pendingScrollTarget: String? = null
 
     private var isLoadingLocalBranch = false
     private var isLoadingRemoteBranch = false
@@ -52,6 +54,7 @@ class RepositoryScreenViewModel(
     val tagsFilter: StateFlow<List<Tag>> = _tagsFilter.asStateFlow()
 
     val hasMoreCommits: StateFlow<Boolean> = _hasMoreCommits.asStateFlow()
+    val scrollToCommitId: StateFlow<String?> = _scrollToCommitId.asStateFlow()
 
 
     fun open(repoPath: Path) {
@@ -172,10 +175,17 @@ class RepositoryScreenViewModel(
                     _commits.value += loadedCommits
                     _hasMoreCommits.value = loadedCommits.size == limit
                     isLoadingCommit = false
+
+                    // Emit pending scroll target after commits are loaded
+                    _pendingScrollTarget?.let { target ->
+                        _scrollToCommitId.value = target
+                        _pendingScrollTarget = null
+                    }
                 }
             } catch (e: Exception) {
                 println("Error loading more commits: ${e.message}")
                 isLoadingCommit = false
+                _pendingScrollTarget = null
             }
         }.invokeOnCompletion {
             updateGraph(false, _commits.value)
@@ -224,6 +234,16 @@ class RepositoryScreenViewModel(
 
     fun refreshGraph(hasWip: Boolean) {
         updateGraph(hasWip, _commits.value)
+    }
+
+    fun setScrollRestoreTarget(commitId: String?) {
+        // Store as pending - will be emitted after commits are loaded
+        _pendingScrollTarget = commitId
+    }
+
+    fun clearScrollRestoreTarget() {
+        _scrollToCommitId.value = null
+        _pendingScrollTarget = null
     }
 
     private fun updateGraph(hasWip: Boolean, commits: List<Commit>) {
