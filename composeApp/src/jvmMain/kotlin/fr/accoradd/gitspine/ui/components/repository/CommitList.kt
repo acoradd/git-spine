@@ -17,9 +17,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asSkiaBitmap
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerButton
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
@@ -75,6 +81,7 @@ fun CommitList(
     commits: List<CommitData> = emptyList(),
     graphResult: GraphResult? = null,
     onCommitClick: (CommitData) -> Unit = {},
+    onCommitRightClick: (CommitData, Offset) -> Unit = { _, _ -> },
     onLoadMore: () -> Unit = {},
     hasMore: Boolean = false,
 ) {
@@ -156,6 +163,7 @@ fun CommitList(
                             columnWidths = columnWidths,
                             graphResult = graphResult,
                             onClick = { onCommitClick(commit) },
+                            onRightClick = { offset -> onCommitRightClick(commit, offset) },
                             onWidthChanged = { columnId, newWidth ->
                                 columnWidths[columnId] = newWidth
                             },
@@ -253,7 +261,7 @@ private fun ResizableColumnsHeader(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 private fun CommitRow(
     commit: CommitData,
@@ -261,6 +269,7 @@ private fun CommitRow(
     columnWidths: Map<String, Float>,
     graphResult: GraphResult?,
     onClick: () -> Unit,
+    onRightClick: (Offset) -> Unit,
     onWidthChanged: (String, Float) -> Unit,
     totalWidth: Float,
     horizontalGraphScrollState: ScrollState,
@@ -273,6 +282,7 @@ private fun CommitRow(
 
     val interactionSource = remember { MutableInteractionSource() }
     var imageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+    var layoutCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
     LaunchedEffect(author.email) {
         val imageUrl = AppConfig.getGravatarUrl(author.email)
@@ -292,12 +302,29 @@ private fun CommitRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(28.dp)
+            .onGloballyPositioned { coordinates ->
+                layoutCoordinates = coordinates
+            }
             .background(
                 when {
                     commit.isSelected -> JewelTheme.defaultTitleBarStyle.colors.titlePaneButtonHoveredBackground
                     else -> Color.Transparent
                 }
             )
+            .pointerInput(commit.info.id) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        if (event.type == PointerEventType.Press &&
+                            event.button == PointerButton.Secondary
+                        ) {
+                            val localPosition = event.changes.firstOrNull()?.position ?: Offset.Zero
+                            val rootPosition = layoutCoordinates?.localToRoot(localPosition) ?: localPosition
+                            onRightClick(rootPosition)
+                        }
+                    }
+                }
+            }
             .clickable(onClick = onClick)
             .hoverable(interactionSource)
     ) {

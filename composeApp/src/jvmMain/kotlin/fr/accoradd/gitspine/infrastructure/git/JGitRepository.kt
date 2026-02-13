@@ -7,6 +7,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext
 import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.api.ResetCommand
+import org.eclipse.jgit.lib.ObjectId
 import org.eclipse.jgit.revwalk.RevCommit
 import org.eclipse.jgit.revwalk.RevSort
 import org.eclipse.jgit.revwalk.RevTag
@@ -360,6 +362,124 @@ class JGitRepository(
         } catch (e: Exception) {
             notificationManager.createNotification(
                 title = "Create branch",
+                message = e.message ?: "Erreur inconnue",
+                status = Notification.Status.Error
+            )
+        }
+    }
+
+    override suspend fun checkout(commitId: String) = withContext(Dispatchers.IO) {
+        val repository = repoState?.repository ?: return@withContext
+        val git = Git(repository)
+        try {
+            git.checkout().setName(commitId).call()
+            notificationManager.createNotification(
+                title = "Checkout",
+                message = "Checkout vers ${commitId.take(7)} réussi",
+                status = Notification.Status.Success
+            )
+        } catch (e: Exception) {
+            notificationManager.createNotification(
+                title = "Checkout",
+                message = e.message ?: "Erreur inconnue",
+                status = Notification.Status.Error
+            )
+        }
+    }
+
+    override suspend fun createBranchFromCommit(name: String, commitId: String) = withContext(Dispatchers.IO) {
+        val repository = repoState?.repository ?: return@withContext
+        val git = Git(repository)
+        try {
+            git.branchCreate()
+                .setName(name)
+                .setStartPoint(commitId)
+                .call()
+            git.checkout().setName(name).call()
+            notificationManager.createNotification(
+                title = "Create branch",
+                message = "Branche '$name' créée depuis ${commitId.take(7)}",
+                status = Notification.Status.Success
+            )
+        } catch (e: Exception) {
+            notificationManager.createNotification(
+                title = "Create branch",
+                message = e.message ?: "Erreur inconnue",
+                status = Notification.Status.Error
+            )
+        }
+    }
+
+    override suspend fun reset(commitId: String, mode: ResetMode) = withContext(Dispatchers.IO) {
+        val repository = repoState?.repository ?: return@withContext
+        val git = Git(repository)
+        try {
+            val resetMode = when (mode) {
+                ResetMode.SOFT -> ResetCommand.ResetType.SOFT
+                ResetMode.MIXED -> ResetCommand.ResetType.MIXED
+                ResetMode.HARD -> ResetCommand.ResetType.HARD
+            }
+            git.reset()
+                .setMode(resetMode)
+                .setRef(commitId)
+                .call()
+            notificationManager.createNotification(
+                title = "Reset",
+                message = "Reset ${mode.name.lowercase()} vers ${commitId.take(7)} réussi",
+                status = Notification.Status.Success
+            )
+        } catch (e: Exception) {
+            notificationManager.createNotification(
+                title = "Reset",
+                message = e.message ?: "Erreur inconnue",
+                status = Notification.Status.Error
+            )
+        }
+    }
+
+    override suspend fun revert(commitId: String) = withContext(Dispatchers.IO) {
+        val repository = repoState?.repository ?: return@withContext
+        val git = Git(repository)
+        try {
+            val objectId = ObjectId.fromString(commitId)
+            RevWalk(repository).use { walk ->
+                val commit = walk.parseCommit(objectId)
+                git.revert().include(commit).call()
+            }
+            notificationManager.createNotification(
+                title = "Revert",
+                message = "Commit ${commitId.take(7)} annulé avec succès",
+                status = Notification.Status.Success
+            )
+        } catch (e: Exception) {
+            notificationManager.createNotification(
+                title = "Revert",
+                message = e.message ?: "Erreur inconnue",
+                status = Notification.Status.Error
+            )
+        }
+    }
+
+    override suspend fun createTag(name: String, commitId: String) = withContext(Dispatchers.IO) {
+        val repository = repoState?.repository ?: return@withContext
+        val git = Git(repository)
+        try {
+            val objectId = ObjectId.fromString(commitId)
+            RevWalk(repository).use { walk ->
+                val commit = walk.parseCommit(objectId)
+                git.tag()
+                    .setName(name)
+                    .setObjectId(commit)
+                    .call()
+            }
+            notificationManager.createNotification(
+                title = "Create tag",
+                message = "Tag '$name' créé sur ${commitId.take(7)}",
+                status = Notification.Status.Success
+            )
+        } catch (e: Exception) {
+            notificationManager.createNotification(
+                title = "Create tag",
                 message = e.message ?: "Erreur inconnue",
                 status = Notification.Status.Error
             )

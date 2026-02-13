@@ -233,4 +233,47 @@ class RepositoryScreenViewModel(
             _graphResult.value = result
         }
     }
+
+    // Context menu actions
+    fun checkout(commitId: String) {
+        viewModelScope.launch {
+            gitRepository.checkout(commitId)
+            refreshAll()
+        }
+    }
+
+    fun createBranchFromCommit(name: String, commitId: String) {
+        viewModelScope.launch {
+            gitRepository.createBranchFromCommit(name, commitId)
+            refreshAll()
+        }
+    }
+
+    fun reset(commitId: String, mode: ResetMode) {
+        viewModelScope.launch {
+            gitRepository.reset(commitId, mode)
+            refreshAll()
+        }
+    }
+
+    fun revert(commitId: String) {
+        viewModelScope.launch {
+            gitRepository.revert(commitId)
+            refreshAll()
+        }
+    }
+
+    fun createTag(name: String, commitId: String) {
+        viewModelScope.launch {
+            gitRepository.createTag(name, commitId)
+            loadTags()
+        }
+    }
+
+    private fun refreshAll() {
+        loadCommits(reset = true)
+        loadLocalBranches()
+        loadRemoteBranches()
+        loadTags()
+    }
 }

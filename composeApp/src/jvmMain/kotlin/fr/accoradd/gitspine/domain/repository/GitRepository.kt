@@ -2,6 +2,7 @@ package fr.accoradd.gitspine.domain.repository
 
 import fr.accoradd.gitspine.domain.model.Branch
 import fr.accoradd.gitspine.domain.model.Commit
+import fr.accoradd.gitspine.domain.model.ResetMode
 import fr.accoradd.gitspine.domain.model.Tag
 import fr.accoradd.gitspine.domain.model.WorkspaceStatus
 import kotlinx.coroutines.flow.Flow
@@ -50,4 +51,11 @@ interface GitRepository {
     suspend fun stash()
     suspend fun unstash(stashName: String)
     suspend fun createBranch(name: String)
+
+    // Context menu operations
+    suspend fun checkout(commitId: String)
+    suspend fun createBranchFromCommit(name: String, commitId: String)
+    suspend fun reset(commitId: String, mode: ResetMode)
+    suspend fun revert(commitId: String)
+    suspend fun createTag(name: String, commitId: String)
 }
