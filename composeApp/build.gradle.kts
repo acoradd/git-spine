@@ -67,7 +67,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "gitspine"
-            packageVersion = "1.0.4"
+            packageVersion = "1.0.5"
             description = "GitSpine"
             vendor = "Accoradd"
 
