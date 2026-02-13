@@ -9,17 +9,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asSkiaBitmap
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.isSecondaryPressed
@@ -32,19 +28,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import coil3.Bitmap
-import coil3.BitmapImage
-import coil3.asImage
 import coil3.compose.LocalPlatformContext
 import coil3.size.Size
 import fr.accoradd.gitspine.core.config.AppConfig
-import fr.accoradd.gitspine.domain.model.Branch
 import fr.accoradd.gitspine.domain.model.Commit
 import fr.accoradd.gitspine.domain.model.GraphResult
 import fr.accoradd.gitspine.domain.model.RefCommit
-import fr.accoradd.gitspine.infrastructure.image.FallbackType
-import fr.accoradd.gitspine.infrastructure.image.IdenticonGenerator
 import fr.accoradd.gitspine.ui.components.graph.CELL_SIZE
 import fr.accoradd.gitspine.ui.components.graph.GraphCell
 import fr.accoradd.gitspine.ui.components.graph.getEdgesForCell
@@ -53,11 +42,8 @@ import fr.accoradd.gitspine.ui.theme.LocalImageManager
 import fr.accoradd.gitspine.ui.theme.graphColorsAlpha
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
-import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.Tooltip
 import org.jetbrains.jewel.ui.component.VerticalScrollbar
-import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.window.defaultTitleBarStyle
 import java.awt.Cursor
 
@@ -87,6 +73,7 @@ fun CommitList(
     onRefRightClick: (RefCommit, Commit, Offset) -> Unit = { _, _, _ -> },
     onLoadMore: () -> Unit = {},
     hasMore: Boolean = false,
+    refContextMenuState: RefContextMenuState? = null
 ) {
     val density = LocalDensity.current
 
@@ -173,7 +160,8 @@ fun CommitList(
                             },
                             totalWidth = totalWidth,
                             horizontalGraphScrollState = horizontalGraphScrollState,
-                            density = density
+                            density = density,
+                            refContextMenuState = refContextMenuState
                         )
                     }
 
@@ -278,7 +266,8 @@ private fun CommitRow(
     onWidthChanged: (String, Float) -> Unit,
     totalWidth: Float,
     horizontalGraphScrollState: ScrollState,
-    density: Density
+    density: Density,
+    refContextMenuState: RefContextMenuState?
 ) {
     val imageLoader = LocalImageLoader.current
     val platformContext = LocalPlatformContext.current
@@ -362,6 +351,7 @@ private fun CommitRow(
                                     refs = commit.refs,
                                     backgroundColor = commitColor,
                                     onRefRightClick = onRefRightClick,
+                                    refContextMenuState = refContextMenuState,
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }

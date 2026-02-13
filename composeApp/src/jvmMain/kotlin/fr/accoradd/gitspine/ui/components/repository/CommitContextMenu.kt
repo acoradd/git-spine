@@ -113,14 +113,6 @@ fun CommitContextMenu(
                                 }
                             )
                             ContextMenuItem(
-                                text = "Mixed (conserver les changements non indexés)",
-                                onClick = {
-                                    onAction(CommitContextMenuAction.Reset(commit, ResetMode.MIXED))
-                                    showResetSubmenu = false
-                                    onDismiss()
-                                }
-                            )
-                            ContextMenuItem(
                                 text = "Hard (supprimer tous les changements)",
                                 onClick = {
                                     onAction(CommitContextMenuAction.Reset(commit, ResetMode.HARD))
@@ -133,7 +125,7 @@ fun CommitContextMenu(
                 )
 
                 ContextMenuItem(
-                    text = "Revert ce commit",
+                    text = "Revert this commit",
                     onClick = {
                         onAction(CommitContextMenuAction.Revert(commit))
                         onDismiss()

@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -24,7 +25,9 @@ import fr.accoradd.gitspine.domain.model.RefCommit
 import fr.accoradd.gitspine.domain.model.ResetMode
 import fr.accoradd.gitspine.domain.model.Tag
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 
 data class RefContextMenuState(
     val isVisible: Boolean = false,
@@ -63,8 +66,7 @@ fun RefContextMenu(
         var showResetSubmenu by remember { mutableStateOf(false) }
 
         val isBranch = ref is Branch
-        val isLocalBranch = isBranch && !(ref as Branch).isRemote
-        val isTag = ref is Tag
+        val isLocalBranch = isBranch && !ref.isRemote
 
         val offsetX = with(density) { state.position.x - 28.dp.toPx() }
         val offsetY = with(density) { state.position.y - 28.dp.toPx() }
@@ -80,13 +82,13 @@ fun RefContextMenu(
             Column(
                 modifier = Modifier
                     .shadow(8.dp, RoundedCornerShape(4.dp))
-                    .background(JewelTheme.globalColors.panelBackground, RoundedCornerShape(4.dp))
+                    .background(JewelTheme.globalColors.toolwindowBackground, RoundedCornerShape(4.dp))
                     .padding(4.dp)
                     .width(IntrinsicSize.Max)
             ) {
                 // Section: Ref actions
                 RefMenuItem(
-                    text = if (isBranch) "Checkout cette branche" else "Checkout ce tag",
+                    text = "Checkout ${ref.name}",
                     onClick = {
                         onAction(RefContextMenuAction.CheckoutRef(ref))
                         onDismiss()
@@ -96,9 +98,9 @@ fun RefContextMenu(
 
                 if (isLocalBranch) {
                     RefMenuItem(
-                        text = "Push",
+                        text = "Push ${ref.name}",
                         onClick = {
-                            onAction(RefContextMenuAction.PushBranch(ref as Branch))
+                            onAction(RefContextMenuAction.PushBranch(ref))
                             onDismiss()
                         },
                         onHover = { showResetSubmenu = false }
@@ -106,9 +108,9 @@ fun RefContextMenu(
 
                     if (state.hasRemoteTracking) {
                         RefMenuItem(
-                            text = "Pull et merge",
+                            text = "Pull ${ref.name}",
                             onClick = {
-                                onAction(RefContextMenuAction.PullMergeBranch(ref as Branch))
+                                onAction(RefContextMenuAction.PullMergeBranch(ref))
                                 onDismiss()
                             },
                             onHover = { showResetSubmenu = false }
@@ -117,7 +119,7 @@ fun RefContextMenu(
                 }
 
                 RefMenuItem(
-                    text = if (isBranch) "Supprimer la branche" else "Supprimer le tag",
+                    text = "Delete ${ref.name}",
                     onClick = {
                         onAction(RefContextMenuAction.DeleteRef(ref))
                         onDismiss()
@@ -129,24 +131,8 @@ fun RefContextMenu(
                 if (commit != null) {
                     RefMenuDivider()
 
-                    // Section: Commit actions
-                    Text(
-                        text = "Commit",
-                        color = JewelTheme.globalColors.text.disabled,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                    )
-
                     RefMenuItem(
-                        text = "Checkout le commit",
-                        onClick = {
-                            onAction(RefContextMenuAction.CheckoutCommit(commit))
-                            onDismiss()
-                        },
-                        onHover = { showResetSubmenu = false }
-                    )
-
-                    RefMenuItem(
-                        text = "Créer une branche...",
+                        text = "Créer une branche",
                         onClick = {
                             onDismiss()
                             onShowInputDialog("Nouvelle branche", "Nom de la branche") { branchName ->
@@ -159,7 +145,7 @@ fun RefContextMenu(
                     )
 
                     RefMenuItemWithSubmenu(
-                        text = "Reset vers ce commit",
+                        text = "Reset to this commit",
                         expanded = showResetSubmenu,
                         onHover = { showResetSubmenu = true },
                         submenuContent = {
@@ -167,11 +153,11 @@ fun RefContextMenu(
                                 modifier = Modifier
                                     .width(IntrinsicSize.Max)
                                     .shadow(8.dp, RoundedCornerShape(4.dp))
-                                    .background(JewelTheme.globalColors.panelBackground, RoundedCornerShape(4.dp))
+                                    .background(JewelTheme.globalColors.toolwindowBackground, RoundedCornerShape(4.dp))
                                     .padding(4.dp)
                             ) {
                                 RefMenuItem(
-                                    text = "Soft",
+                                    text = "Soft (conserver les changements indexés)",
                                     onClick = {
                                         onAction(RefContextMenuAction.Reset(commit, ResetMode.SOFT))
                                         showResetSubmenu = false
@@ -179,15 +165,7 @@ fun RefContextMenu(
                                     }
                                 )
                                 RefMenuItem(
-                                    text = "Mixed",
-                                    onClick = {
-                                        onAction(RefContextMenuAction.Reset(commit, ResetMode.MIXED))
-                                        showResetSubmenu = false
-                                        onDismiss()
-                                    }
-                                )
-                                RefMenuItem(
-                                    text = "Hard",
+                                    text = "Hard (supprimer tous les changements)",
                                     onClick = {
                                         onAction(RefContextMenuAction.Reset(commit, ResetMode.HARD))
                                         showResetSubmenu = false
@@ -199,7 +177,7 @@ fun RefContextMenu(
                     )
 
                     RefMenuItem(
-                        text = "Revert ce commit",
+                        text = "Revert this commit",
                         onClick = {
                             onAction(RefContextMenuAction.Revert(commit))
                             onDismiss()
@@ -242,13 +220,14 @@ private fun RefMenuItem(
         text = text,
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(4.dp))
             .hoverable(interactionSource)
             .background(
                 if (isHovered) JewelTheme.globalColors.outlines.focused.copy(alpha = 0.2f)
-                else JewelTheme.globalColors.panelBackground
+                else JewelTheme.globalColors.toolwindowBackground
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
     )
 }
 
@@ -272,20 +251,25 @@ private fun RefMenuItemWithSubmenu(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .clip(RoundedCornerShape(4.dp))
                 .onGloballyPositioned { coordinates ->
                     itemWidth = coordinates.size.width
                 }
                 .hoverable(interactionSource)
                 .background(
                     if (isHovered || expanded) JewelTheme.globalColors.outlines.focused.copy(alpha = 0.2f)
-                    else JewelTheme.globalColors.panelBackground
+                    else JewelTheme.globalColors.toolwindowBackground
                 )
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = 8.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(text = text)
-            Text(text = "▶", modifier = Modifier.padding(start = 8.dp))
+            Icon(
+                key = AllIconsKeys.General.ChevronRight,
+                contentDescription = "Open submenu",
+
+            )
         }
 
         if (expanded) {

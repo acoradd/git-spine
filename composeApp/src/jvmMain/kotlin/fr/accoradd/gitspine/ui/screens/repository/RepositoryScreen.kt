@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
@@ -175,7 +174,8 @@ fun RepositoryScreen(
                     hasMore = hasMoreCommits.value,
                     localBranches = localBranches.value,
                     remoteBranches = remoteBranches.value,
-                    tags = tags.value
+                    tags = tags.value,
+                    refContextMenuState
                 )
             }
         )
@@ -339,7 +339,8 @@ private fun CenterPanel(
     hasMore: Boolean,
     localBranches: List<Branch>,
     remoteBranches: List<Branch>,
-    tags: List<Tag>
+    tags: List<Tag>,
+    refContextMenuState: RefContextMenuState
 ) {
     val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm") }
     val hasWip = workspaceStatus.hasChanges
@@ -357,8 +358,7 @@ private fun CenterPanel(
                         parents = emptyList()
                     ),
                     date = "",
-                    isSelected = selectedItem is CommitOrWip.Wip,
-                    row = 0
+                    isSelected = selectedItem is CommitOrWip.Wip
                 )
             )
         }
@@ -401,7 +401,8 @@ private fun CenterPanel(
         },
         onRefRightClick = onRefRightClick,
         onLoadMore = onLoadMore,
-        hasMore = hasMore
+        hasMore = hasMore,
+        refContextMenuState = refContextMenuState
     )
 }
 

@@ -1,6 +1,7 @@
 package fr.accoradd.gitspine.ui.components.repository
 
-import androidx.compose.foundation.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
@@ -10,7 +11,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -40,6 +40,7 @@ fun RefBadgeList(
     refs: List<RefCommit>,
     backgroundColor: Color,
     onRefRightClick: (RefCommit, Offset) -> Unit,
+    refContextMenuState: RefContextMenuState?,
     modifier: Modifier = Modifier
 ) {
     if (refs.isEmpty()) return
@@ -50,11 +51,28 @@ fun RefBadgeList(
     var popupMinWidth by remember { mutableStateOf<Dp?>(null) }
     var popupMinHeight by remember { mutableStateOf<Dp?>(null) }
     var popupOffsetY by remember { mutableStateOf<Int?>(null) }
+    var isMenuVisible by remember { mutableStateOf(false) }
     val interactionBadgeSource = remember { MutableInteractionSource() }
     val interactionPopupSource = remember { MutableInteractionSource() }
     val isBadgeHovered by interactionBadgeSource.collectIsHoveredAsState()
     val isPopupHovered by interactionPopupSource.collectIsHoveredAsState()
     val popupOffsetX = with(density) { 12.dp.toPx().toInt() }
+    val branchToGroup = mutableMapOf<String, String>()
+    for (commit in refs) {
+        branchToGroup[commit.name] = when (commit) {
+            is Branch if commit.isRemote -> commit.name.substringAfter("/")
+            else -> commit.name
+        }
+    }
+    val refsGroupedByBranch = refs.groupBy { branchToGroup[it.name]!! }
+
+    val othersRefs = refsGroupedByBranch.filter { it.key != branchToGroup[refs.first().name]!! }
+
+    LaunchedEffect(refContextMenuState) {
+        isMenuVisible = refContextMenuState?.let { menu ->
+            menu.isVisible && menu.ref != null && refs.any { it.name == menu.ref.name }
+        } ?: false
+    }
 
     Box(
         modifier = modifier
@@ -70,28 +88,53 @@ fun RefBadgeList(
 
             RefBadgeItem(
                 ref = refs.first(),
+                othersBranchs = refsGroupedByBranch[refs.first().name],
                 backgroundColor = backgroundColor,
-                extraCount = if (refs.size > 1) refs.size - 1 else 0,
                 onRightClick = { offset ->
                     val rootOffset = layoutCoordinates?.localToRoot(offset) ?: offset
                     onRefRightClick(refs.first(), rootOffset)
                 },
-                modifier = Modifier.weight(0.8f).onGloballyPositioned {
-                    popupMinWidth = with(density) {it.size.width.toDp()}
-                    popupMinHeight = with(density) {it.size.height.toDp()}
+                modifier = Modifier.width(IntrinsicSize.Max).onGloballyPositioned {
+                    popupMinWidth = with(density) { it.size.width.toDp() }
+                    popupMinHeight = with(density) { it.size.height.toDp() }
                     popupOffsetY = (layoutCoordinates?.localPositionOf(it, Offset.Zero)?.y?.toInt())
                 }
             )
 
+            if (othersRefs.isNotEmpty() && !isBadgeHovered && !isPopupHovered && !isMenuVisible) {
+
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .height(1.dp)
+                        .background(backgroundColor)
+                )
+                Row(
+                    modifier = Modifier
+                        .width(IntrinsicSize.Min)
+                        .background(backgroundColor)
+                        .clip(RoundedCornerShape(2.dp))
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "+${othersRefs.size}",
+                        style = JewelTheme.defaultTextStyle.copy(fontSize = 12.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip
+                    )
+                }
+            }
+
             Box(
                 modifier = Modifier
-                    .weight(0.2f)
+                    .fillMaxWidth()
                     .height(1.dp)
                     .background(backgroundColor)
             )
         }
 
-        if ((isBadgeHovered || isPopupHovered)) {
+        if (isBadgeHovered || isPopupHovered || isMenuVisible) {
             Popup(
                 alignment = Alignment.TopStart,
                 offset = IntOffset(popupOffsetX, popupOffsetY ?: 0),
@@ -105,13 +148,25 @@ fun RefBadgeList(
                         .background(JewelTheme.globalColors.panelBackground, RoundedCornerShape(4.dp))
                         .hoverable(interactionPopupSource),
                 ) {
-                    refs.forEach { ref ->
+
+                    ExpandedRefBadgeItem(
+                        ref = refs.first(),
+                        othersRefs = refsGroupedByBranch[refs.first().name],
+                        forceHover = !isPopupHovered,
+                        backgroundColor = backgroundColor,
+                        onRightClick = { offset ->
+                            onRefRightClick(refs.first(), offset)
+                        }
+                    )
+
+                    othersRefs.forEach { (_, refs) ->
                         ExpandedRefBadgeItem(
-                            ref = ref,
+                            ref = refs.first(),
+                            othersRefs = refsGroupedByBranch[refs.first().name],
+                            forceHover = false,
                             backgroundColor = backgroundColor,
                             onRightClick = { offset ->
-                                println(offset)
-                                onRefRightClick(ref, offset)
+                                onRefRightClick(refs.first(), offset)
                             }
                         )
                     }
@@ -126,9 +181,9 @@ fun RefBadgeList(
 private fun RefBadgeItem(
     ref: RefCommit,
     backgroundColor: Color,
-    extraCount: Int = 0,
     onRightClick: (Offset) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    othersBranchs: List<RefCommit>?
 ) {
     val isBranch = ref is Branch
     val isLocal = isBranch && !ref.isRemote
@@ -142,10 +197,13 @@ private fun RefBadgeItem(
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
 
-    Box(modifier = modifier) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
+                .width(IntrinsicSize.Max)
                 .clip(RoundedCornerShape(2.dp))
                 .background(if (isHovered) backgroundColor.copy(alpha = 0.6f) else backgroundColor)
                 .onPointerEvent(PointerEventType.Press) { event ->
@@ -163,17 +221,13 @@ private fun RefBadgeItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 softWrap = false,
-                modifier = Modifier.weight(1f),
                 style = JewelTheme.defaultTextStyle.copy(fontSize = 12.sp)
             )
 
-            if (extraCount > 0) {
-                Text(
-                    text = "+$extraCount",
-                    style = JewelTheme.defaultTextStyle.copy(fontSize = 10.sp),
-                    color = JewelTheme.globalColors.text.disabled,
-                    modifier = Modifier.padding(start = 4.dp)
-                )
+            Spacer(modifier = Modifier.width(8.dp))
+
+            if (isLocal && othersBranchs?.any { it is Branch && it.isRemote } ?: false) {
+                RefIcon(ref = ref, isLocal = false, isTag = false)
             }
 
             RefIcon(ref = ref, isLocal = isLocal, isTag = isTag)
@@ -186,7 +240,9 @@ private fun RefBadgeItem(
 private fun ExpandedRefBadgeItem(
     ref: RefCommit,
     backgroundColor: Color,
-    onRightClick: (Offset) -> Unit
+    onRightClick: (Offset) -> Unit,
+    forceHover: Boolean,
+    othersRefs: List<RefCommit>?
 ) {
     val isBranch = ref is Branch
     val isLocal = isBranch && !ref.isRemote
@@ -197,18 +253,21 @@ private fun ExpandedRefBadgeItem(
     }
 
     val interactionSource = remember { MutableInteractionSource() }
+    var layoutCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+
     val isHovered by interactionSource.collectIsHoveredAsState()
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (isHovered) backgroundColor.copy(alpha = 0.6f) else backgroundColor)
+            .background(if (isHovered || forceHover) backgroundColor.copy(alpha = 0.6f) else backgroundColor)
             .hoverable(interactionSource)
+            .onGloballyPositioned { layoutCoordinates = it }
             .onPointerEvent(PointerEventType.Press) { event ->
                 if (event.buttons.isSecondaryPressed) {
                     event.changes.forEach { it.consume() }
                     val pos = event.changes.firstOrNull()?.position ?: Offset.Zero
-                    onRightClick(pos)
+                    onRightClick(layoutCoordinates?.localToRoot(pos) ?: pos)
                 }
             }
             .padding(horizontal = 4.dp, vertical = 2.dp),
@@ -222,6 +281,10 @@ private fun ExpandedRefBadgeItem(
         )
 
         Spacer(modifier = Modifier.width(8.dp))
+
+        if (isLocal && othersRefs?.any { it is Branch && it.isRemote } ?: false) {
+            RefIcon(ref = ref, isLocal = false, isTag = false)
+        }
 
         RefIcon(ref = ref, isLocal = isLocal, isTag = isTag)
     }
@@ -242,18 +305,10 @@ private fun RefIcon(
             modifier = Modifier.size(14.dp)
         )
     } else if (isBranch) {
-        val hasRemoteTracking = isLocal // Simplified - in real code check if remote exists
-
-        Row(
-            modifier = Modifier.width(if (isLocal && hasRemoteTracking) 30.dp else 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.End
-        ) {
-            Icon(
-                key = if (isLocal) AllIconsKeys.Vcs.Branch else AllIconsKeys.Javaee.WebService,
-                contentDescription = if (isLocal) "Local branch" else "Remote branch",
-                modifier = Modifier.size(14.dp)
-            )
-        }
+        Icon(
+            key = if (isLocal) AllIconsKeys.Vcs.Branch else AllIconsKeys.Javaee.WebService,
+            contentDescription = if (isLocal) "Local branch" else "Remote branch",
+            modifier = Modifier.size(14.dp)
+        )
     }
 }
