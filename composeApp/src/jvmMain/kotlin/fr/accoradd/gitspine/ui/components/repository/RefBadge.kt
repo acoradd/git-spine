@@ -45,6 +45,16 @@ fun RefBadgeList(
 ) {
     if (refs.isEmpty()) return
 
+    // Sort refs to put HEAD first
+    val sortedRefs = refs.sortedByDescending { ref ->
+        when {
+            ref is Branch && ref.isHead -> 3  // HEAD first
+            ref is Branch && !ref.isRemote -> 2  // Then local branches
+            ref is Branch -> 1  // Then remote branches
+            else -> 0  // Then tags
+        }
+    }
+
     val density = LocalDensity.current
 
     var layoutCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
@@ -58,15 +68,16 @@ fun RefBadgeList(
     val isPopupHovered by interactionPopupSource.collectIsHoveredAsState()
     val popupOffsetX = with(density) { 12.dp.toPx().toInt() }
     val branchToGroup = mutableMapOf<String, String>()
-    for (commit in refs) {
+    val isHead = sortedRefs.first() is Branch && (sortedRefs.first() as Branch).isHead
+    for (commit in sortedRefs) {
         branchToGroup[commit.name] = when (commit) {
             is Branch if commit.isRemote -> commit.name.substringAfter("/")
             else -> commit.name
         }
     }
-    val refsGroupedByBranch = refs.groupBy { branchToGroup[it.name]!! }
+    val refsGroupedByBranch = sortedRefs.groupBy { branchToGroup[it.name]!! }
 
-    val othersRefs = refsGroupedByBranch.filter { it.key != branchToGroup[refs.first().name]!! }
+    val othersRefs = refsGroupedByBranch.filter { it.key != branchToGroup[sortedRefs.first().name]!! }
 
     LaunchedEffect(refContextMenuState) {
         isMenuVisible = refContextMenuState?.let { menu ->
@@ -87,12 +98,12 @@ fun RefBadgeList(
             Spacer(modifier = Modifier.width(12.dp))
 
             RefBadgeItem(
-                ref = refs.first(),
-                othersBranchs = refsGroupedByBranch[refs.first().name],
+                ref = sortedRefs.first(),
+                othersBranchs = refsGroupedByBranch[sortedRefs.first().name],
                 backgroundColor = backgroundColor,
                 onRightClick = { offset ->
                     val rootOffset = layoutCoordinates?.localToRoot(offset) ?: offset
-                    onRefRightClick(refs.first(), rootOffset)
+                    onRefRightClick(sortedRefs.first(), rootOffset)
                 },
                 modifier = Modifier.width(IntrinsicSize.Max).onGloballyPositioned {
                     popupMinWidth = with(density) { it.size.width.toDp() }
@@ -106,8 +117,8 @@ fun RefBadgeList(
                 Box(
                     modifier = Modifier
                         .width(4.dp)
-                        .height(1.dp)
-                        .background(backgroundColor)
+                        .height(if (isHead) 2.dp else 1.dp)
+                        .background(if (isHead) backgroundColor.copy(alpha = 0.6f) else backgroundColor)
                 )
                 Row(
                     modifier = Modifier
@@ -129,8 +140,8 @@ fun RefBadgeList(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(1.dp)
-                    .background(backgroundColor)
+                    .height(if (isHead) 2.dp else 1.dp)
+                    .background(if (isHead) backgroundColor.copy(alpha = 0.6f) else backgroundColor)
             )
         }
 
@@ -150,12 +161,12 @@ fun RefBadgeList(
                 ) {
 
                     ExpandedRefBadgeItem(
-                        ref = refs.first(),
-                        othersRefs = refsGroupedByBranch[refs.first().name],
+                        ref = sortedRefs.first(),
+                        othersRefs = refsGroupedByBranch[sortedRefs.first().name],
                         forceHover = !isPopupHovered,
                         backgroundColor = backgroundColor,
                         onRightClick = { offset ->
-                            onRefRightClick(refs.first(), offset)
+                            onRefRightClick(sortedRefs.first(), offset)
                         }
                     )
 
@@ -187,12 +198,15 @@ private fun RefBadgeItem(
 ) {
     val isBranch = ref is Branch
     val isLocal = isBranch && !ref.isRemote
+    val isHead = isBranch && ref.isHead
     val isTag = ref is Tag
     val displayName = when {
         isBranch && !isLocal -> ref.name.substringAfter("/", ref.name)
         else -> ref.name
     }
 
+    // HEAD gets a more vivid color (full alpha)
+    val badgeColor = if (isHead) backgroundColor.copy(alpha = 1f) else backgroundColor
 
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
@@ -205,7 +219,7 @@ private fun RefBadgeItem(
             modifier = Modifier
                 .width(IntrinsicSize.Max)
                 .clip(RoundedCornerShape(2.dp))
-                .background(if (isHovered) backgroundColor.copy(alpha = 0.6f) else backgroundColor)
+                .background(if (isHovered || isHead) backgroundColor.copy(alpha = 0.6f) else backgroundColor)
                 .onPointerEvent(PointerEventType.Press) { event ->
                     if (event.buttons.isSecondaryPressed) {
                         event.changes.forEach { it.consume() }
@@ -246,6 +260,7 @@ private fun ExpandedRefBadgeItem(
 ) {
     val isBranch = ref is Branch
     val isLocal = isBranch && !ref.isRemote
+    val isHead = isBranch && ref.isHead
     val isTag = ref is Tag
     val displayName = when {
         isBranch && !isLocal -> ref.name.substringAfter("/", ref.name)
@@ -260,7 +275,7 @@ private fun ExpandedRefBadgeItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (isHovered || forceHover) backgroundColor.copy(alpha = 0.6f) else backgroundColor)
+            .background(if (isHovered || forceHover || isHead) backgroundColor.copy(alpha = 0.6f) else backgroundColor)
             .hoverable(interactionSource)
             .onGloballyPositioned { layoutCoordinates = it }
             .onPointerEvent(PointerEventType.Press) { event ->

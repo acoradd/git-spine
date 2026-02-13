@@ -235,19 +235,28 @@ private fun ResizableColumnsHeader(
                 Box(
                     modifier = Modifier
                         .weight(width)
-                        .fillMaxHeight()
-                        .padding(horizontal = 12.dp),
+                        .fillMaxHeight(),
                     contentAlignment = if (index == columns.size - 1) Alignment.CenterEnd else Alignment.CenterStart
                 ) {
                     Text(
                         text = column.title,
                         color = JewelTheme.globalColors.text.disabled,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                    ResizeColumnsDivider(
+                        index,
+                        columns,
+                        columnWidths,
+                        totalWidth,
+                        column,
+                        onWidthChanged,
+                        horizontalAlignment = Alignment.End,
+                        sliderModifier = Modifier.align(Alignment.TopEnd)
                     )
                 }
 
-                ResizeColumnsDivider(index, columns, columnWidths, totalWidth, column, onWidthChanged)
             }
         }
     }
@@ -320,91 +329,97 @@ private fun CommitRow(
                     modifier = Modifier
                         .weight(width)
                         .fillMaxHeight()
-                        .then(
-                            when (column.id) {
-                                "graph" -> Modifier.horizontalScroll(horizontalGraphScrollState)
-                                "message" -> Modifier.horizontalScroll(rememberScrollState())
-                                else -> Modifier
+                ) {
+                    ResizeColumnsDivider(
+                        index,
+                        columns,
+                        columnWidths,
+                        totalWidth,
+                        column,
+                        onWidthChanged,
+                        color = if (column.id === "graph") position?.let { graphColorsAlpha.colors[it % graphColorsAlpha.size].copy(alpha = graphColorsAlpha.alphaBorder) } else null,
+                        sliderContentModifier = if (column.id === "graph") Modifier.width(2.dp).padding(vertical = 2.dp) else null,
+                        sliderModifier = Modifier.align(Alignment.TopEnd),
+                        horizontalAlignment = Alignment.End
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(
+                                when (column.id) {
+                                    "graph" -> Modifier.horizontalScroll(horizontalGraphScrollState)
+                                    "message" -> Modifier.horizontalScroll(rememberScrollState())
+                                    else -> Modifier
+                                }
+                            )
+                            .then(
+                                // Right-click menu only on graph, message, and date columns
+                                if (column.id in listOf("graph", "message", "date")) {
+                                    Modifier
+                                        .onGloballyPositioned { columnCoordinates = it }
+                                        .onPointerEvent(PointerEventType.Press) { event ->
+                                            if (event.buttons.isSecondaryPressed) {
+                                                val localPosition = event.changes.firstOrNull()?.position ?: Offset.Zero
+                                                val rootPosition = columnCoordinates?.localToRoot(localPosition) ?: localPosition
+                                                onRightClick(rootPosition)
+                                            }
+                                        }
+                                } else Modifier
+                            )
+                            .padding(horizontal = padding),
+                        contentAlignment = if (index == columns.size - 1) Alignment.CenterEnd else Alignment.CenterStart
+                    ) {
+                        when (column.id) {
+                            "branch" -> {
+                                if (commit.refs.isNotEmpty()) {
+                                    RefBadgeList(
+                                        refs = commit.refs,
+                                        backgroundColor = commitColor,
+                                        onRefRightClick = onRefRightClick,
+                                        refContextMenuState = refContextMenuState,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
                             }
-                        )
-                        .then(
-                            // Right-click menu only on graph, message, and date columns
-                            if (column.id in listOf("graph", "message", "date")) {
-                                Modifier
-                                    .onGloballyPositioned { columnCoordinates = it }
-                                    .onPointerEvent(PointerEventType.Press) { event ->
-                                        if (event.buttons.isSecondaryPressed) {
-                                            val localPosition = event.changes.firstOrNull()?.position ?: Offset.Zero
-                                            val rootPosition = columnCoordinates?.localToRoot(localPosition) ?: localPosition
-                                            onRightClick(rootPosition)
+
+                            "graph" -> {
+                                if (graphResult != null && graphResult.width > 0) {
+                                    Row {
+                                        for (col in 1 until graphResult.width + 1) {
+                                            val cellEdges = getEdgesForCell(commit.row, col, graphResult.edges)
+                                            GraphCell(
+                                                commit = commit,
+                                                column = col,
+                                                nodePosition = position,
+                                                imageBitmap = imageBitmap,
+                                                edges = cellEdges
+                                            )
                                         }
                                     }
-                            } else Modifier
-                        )
-                        .padding(horizontal = padding),
-                    contentAlignment = if (index == columns.size - 1) Alignment.CenterEnd else Alignment.CenterStart
-                ) {
-                    when (column.id) {
-                        "branch" -> {
-                            if (commit.refs.isNotEmpty()) {
-                                RefBadgeList(
-                                    refs = commit.refs,
-                                    backgroundColor = commitColor,
-                                    onRefRightClick = onRefRightClick,
-                                    refContextMenuState = refContextMenuState,
-                                    modifier = Modifier.fillMaxSize()
+                                } else {
+                                    Text(text = "●")
+                                }
+                            }
+
+                            "message" -> {
+                                Text(
+                                    text = commit.info.message,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Visible
+                                )
+                            }
+
+                            "date" -> {
+                                Text(
+                                    text = commit.date,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Visible,
+                                    style = JewelTheme.editorTextStyle
                                 )
                             }
                         }
-
-                        "graph" -> {
-                            if (graphResult != null && graphResult.width > 0) {
-                                Row {
-                                    for (col in 1 until graphResult.width + 1) {
-                                        val cellEdges = getEdgesForCell(commit.row, col, graphResult.edges)
-                                        GraphCell(
-                                            commit = commit,
-                                            column = col,
-                                            nodePosition = position,
-                                            imageBitmap = imageBitmap,
-                                            edges = cellEdges
-                                        )
-                                    }
-                                }
-                            } else {
-                                Text(text = "●")
-                            }
-                        }
-
-                        "message" -> {
-                            Text(
-                                text = commit.info.message,
-                                maxLines = 1,
-                                overflow = TextOverflow.Visible
-                            )
-                        }
-
-                        "date" -> {
-                            Text(
-                                text = commit.date,
-                                maxLines = 1,
-                                overflow = TextOverflow.Visible,
-                                style = JewelTheme.editorTextStyle
-                            )
-                        }
                     }
                 }
-
-                ResizeColumnsDivider(
-                    index,
-                    columns,
-                    columnWidths,
-                    totalWidth,
-                    column,
-                    onWidthChanged,
-                    color = if (column.id === "graph") position?.let { graphColorsAlpha.colors[it % graphColorsAlpha.size].copy(alpha = graphColorsAlpha.alphaBorder) } else null,
-                    sliderModifier = if (column.id === "graph") Modifier.width(2.dp).padding(vertical = 2.dp) else null
-                )
             }
         }
     }
@@ -422,7 +437,9 @@ private fun ResizeColumnsDivider(
     column: TableColumn,
     onWidthChanged: (String, Float) -> Unit,
     color: Color? = null,
-    sliderModifier: Modifier? = null
+    sliderContentModifier: Modifier? = null,
+    sliderModifier: Modifier = Modifier,
+    horizontalAlignment: Alignment.Horizontal = Alignment.CenterHorizontally
 ) {
     var columnWidthsAtStartOfDrag = columnWidths.toMap()
     val currentColumn = columns[index]
@@ -430,8 +447,10 @@ private fun ResizeColumnsDivider(
     if (index < columns.size - 1) {
         ColumnDivider(
             color = color,
+            sliderContentModifier = sliderContentModifier,
             sliderModifier = sliderModifier,
             resizable = column.resizable,
+            horizontalAlignment = horizontalAlignment,
             onDragStart = { columnWidthsAtStartOfDrag = columnWidths.toMap() },
             onPositionChange = { deltaX ->
 
@@ -465,10 +484,12 @@ private fun ColumnDivider(
     onPositionChange: (absoluteX: Float) -> Unit,
     resizable: Boolean = true,
     color: Color? = null,
-    sliderModifier: Modifier? = null
+    sliderContentModifier: Modifier? = null,
+    sliderModifier: Modifier = Modifier,
+    horizontalAlignment: Alignment.Horizontal = Alignment.CenterHorizontally
 ) {
 
-    val modifier = if (resizable) Modifier
+    val modifier = if (resizable) sliderModifier
         .pointerHoverIcon(PointerIcon(Cursor(Cursor.E_RESIZE_CURSOR)))
         .pointerInput(Unit) {
             awaitEachGesture {
@@ -482,15 +503,15 @@ private fun ColumnDivider(
                     change.consume()
                 }
             }
-        } else Modifier
+        } else sliderModifier
 
-    Row(
+    Column(
         modifier = modifier.width(4.dp).fillMaxHeight(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = horizontalAlignment
     ) {
         Box(
-            modifier = (sliderModifier ?: Modifier.width(1.dp))
+            modifier = (sliderContentModifier ?: Modifier.width(1.dp))
                 .background(color ?: JewelTheme.defaultTitleBarStyle.colors.background)
                 .fillMaxHeight()
         )

@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import fr.accoradd.gitspine.core.extension.drawRoundedCornerPath
+import fr.accoradd.gitspine.domain.model.Branch
 import fr.accoradd.gitspine.domain.model.EdgeType
 import fr.accoradd.gitspine.domain.model.GraphEdge
 import fr.accoradd.gitspine.ui.components.repository.CommitData
@@ -62,6 +63,7 @@ fun GraphCell(
         val bgWidth = mergeCircleRadiusPx * 4
         val offsetBgTop = (size.height - bgWidth) / 2
         val isMerge = commit.info.parents.size > 1
+        val isHead = commit.refs.any { it is Branch && it.isHead }
 
         if (nodePosition != null) {
             val colorBg = graphColorsAlpha.colors[nodePosition % graphColorsAlpha.size].copy(graphColorsAlpha.alphaBg)
@@ -81,19 +83,19 @@ fun GraphCell(
                 )
                 if (commit.refs.isNotEmpty()) {
                     drawLine(
-                        color = colorBranchBg,
+                        color = if (isHead) colorBg.copy(alpha = 0.6f) else colorBranchBg,
                         start = Offset(0f, centerY),
                         end = Offset(centerX, centerY),
-                        strokeWidth = smallLineWidthPx,
+                        strokeWidth = if (isHead) lineWidthPx else smallLineWidthPx,
                         cap = StrokeCap.Butt
                     )
                 }
             } else if (commit.refs.isNotEmpty()) {
                 drawLine(
-                    color = colorBranchBg,
+                    color = if (isHead) colorBg.copy(alpha = 0.6f) else colorBranchBg,
                     start = Offset(0f, centerY),
                     end = Offset(cellWidth, centerY),
-                    strokeWidth = smallLineWidthPx,
+                    strokeWidth = if (isHead) lineWidthPx else smallLineWidthPx,
                     cap = StrokeCap.Butt
                 )
             }
