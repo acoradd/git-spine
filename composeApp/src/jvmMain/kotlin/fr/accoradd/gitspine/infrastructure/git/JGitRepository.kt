@@ -485,4 +485,115 @@ class JGitRepository(
             )
         }
     }
+
+    override suspend fun checkoutBranch(branchName: String) = withContext(Dispatchers.IO) {
+        val repository = repoState?.repository ?: return@withContext
+        val git = Git(repository)
+        try {
+            git.checkout().setName(branchName).call()
+            notificationManager.createNotification(
+                title = "Checkout",
+                message = "Checkout vers '$branchName' réussi",
+                status = Notification.Status.Success
+            )
+        } catch (e: Exception) {
+            notificationManager.createNotification(
+                title = "Checkout",
+                message = e.message ?: "Erreur inconnue",
+                status = Notification.Status.Error
+            )
+        }
+    }
+
+    override suspend fun deleteBranch(branchName: String, force: Boolean) = withContext(Dispatchers.IO) {
+        val repository = repoState?.repository ?: return@withContext
+        val git = Git(repository)
+        try {
+            git.branchDelete()
+                .setBranchNames(branchName)
+                .setForce(force)
+                .call()
+            notificationManager.createNotification(
+                title = "Delete branch",
+                message = "Branche '$branchName' supprimée",
+                status = Notification.Status.Success
+            )
+        } catch (e: Exception) {
+            notificationManager.createNotification(
+                title = "Delete branch",
+                message = e.message ?: "Erreur inconnue",
+                status = Notification.Status.Error
+            )
+        }
+    }
+
+    override suspend fun deleteTag(tagName: String) = withContext(Dispatchers.IO) {
+        val repository = repoState?.repository ?: return@withContext
+        val git = Git(repository)
+        try {
+            git.tagDelete().setTags(tagName).call()
+            notificationManager.createNotification(
+                title = "Delete tag",
+                message = "Tag '$tagName' supprimé",
+                status = Notification.Status.Success
+            )
+        } catch (e: Exception) {
+            notificationManager.createNotification(
+                title = "Delete tag",
+                message = e.message ?: "Erreur inconnue",
+                status = Notification.Status.Error
+            )
+        }
+    }
+
+    override suspend fun pushBranch(branchName: String) = withContext(Dispatchers.IO) {
+        val repository = repoState?.repository ?: return@withContext
+        val cmd = Git(repository).push()
+            .add(branchName)
+
+        val monitor = NotificationProgressMonitor(
+            notificationManager = notificationManager,
+            cmd = cmd,
+            title = "Push",
+            startMessage = "Pushing '$branchName'",
+            successMessage = "Push de '$branchName' réussi"
+        )
+        cmd.setProgressMonitor(monitor)
+        try {
+            monitor.call()
+        } catch (e: Exception) {
+            println("Error pushing branch: ${e.message}")
+        }
+    }
+
+    override suspend fun pullMergeBranch(branchName: String) = withContext(Dispatchers.IO) {
+        val repository = repoState?.repository ?: return@withContext
+        val git = Git(repository)
+
+        try {
+            // First checkout the branch if not already on it
+            val currentBranch = repository.branch
+            if (currentBranch != branchName) {
+                git.checkout().setName(branchName).call()
+            }
+
+            // Then pull
+            val cmd = git.pull()
+            val monitor = NotificationProgressMonitor(
+                notificationManager = notificationManager,
+                cmd = cmd,
+                title = "Pull",
+                startMessage = "Pulling '$branchName'",
+                successMessage = "Pull de '$branchName' réussi"
+            )
+            cmd.setProgressMonitor(monitor)
+            monitor.call()
+        } catch (e: Exception) {
+            notificationManager.createNotification(
+                title = "Pull",
+                message = e.message ?: "Erreur inconnue",
+                status = Notification.Status.Error
+            )
+        }
+    }
 }

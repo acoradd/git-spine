@@ -26,6 +26,9 @@ import fr.accoradd.gitspine.ui.components.repository.CommitContextMenuState
 import fr.accoradd.gitspine.ui.components.repository.CommitData
 import fr.accoradd.gitspine.ui.components.repository.CommitList
 import fr.accoradd.gitspine.ui.components.repository.HorizontalSpacer
+import fr.accoradd.gitspine.ui.components.repository.RefContextMenu
+import fr.accoradd.gitspine.ui.components.repository.RefContextMenuAction
+import fr.accoradd.gitspine.ui.components.repository.RefContextMenuState
 import fr.accoradd.gitspine.ui.components.repository.RepositoryLeftPanel
 import fr.accoradd.gitspine.ui.components.workspace.WorkspaceChangesPanel
 import fr.accoradd.gitspine.ui.theme.jewelColors
@@ -85,6 +88,9 @@ fun RepositoryScreen(
 
     // Context menu state
     var contextMenuState by remember { mutableStateOf(CommitContextMenuState()) }
+
+    // Ref context menu state
+    var refContextMenuState by remember { mutableStateOf(RefContextMenuState()) }
 
     // Input dialog state
     var inputDialogState by remember {
@@ -149,6 +155,20 @@ fun RepositoryScreen(
                             isVisible = true,
                             commit = commit,
                             position = offset
+                        )
+                    },
+                    onRefRightClick = { ref, commit, offset ->
+                        // Check if ref has remote tracking (for local branches)
+                        val hasRemoteTracking = if (ref is Branch && !ref.isRemote) {
+                            remoteBranches.value.any { it.name.endsWith("/${ref.name}") }
+                        } else false
+
+                        refContextMenuState = RefContextMenuState(
+                            isVisible = true,
+                            ref = ref,
+                            commit = commit,
+                            position = offset,
+                            hasRemoteTracking = hasRemoteTracking
                         )
                     },
                     onLoadMore = { repositoryScreenViewModel.loadCommits() },
@@ -246,6 +266,51 @@ fun RepositoryScreen(
             }
         )
 
+        // Ref context menu
+        RefContextMenu(
+            state = refContextMenuState,
+            onDismiss = { refContextMenuState = RefContextMenuState() },
+            onAction = { action ->
+                when (action) {
+                    is RefContextMenuAction.CheckoutRef -> {
+                        val refName = if (action.ref is Branch) action.ref.name else action.ref.name
+                        repositoryScreenViewModel.checkoutBranch(refName)
+                    }
+                    is RefContextMenuAction.DeleteRef -> {
+                        if (action.ref is Branch) {
+                            repositoryScreenViewModel.deleteBranch(action.ref.name)
+                        } else if (action.ref is Tag) {
+                            repositoryScreenViewModel.deleteTag(action.ref.name)
+                        }
+                    }
+                    is RefContextMenuAction.PushBranch -> {
+                        repositoryScreenViewModel.pushBranch(action.branch.name)
+                    }
+                    is RefContextMenuAction.PullMergeBranch -> {
+                        repositoryScreenViewModel.pullMergeBranch(action.branch.name)
+                    }
+                    is RefContextMenuAction.CheckoutCommit -> {
+                        repositoryScreenViewModel.checkout(action.commit.id)
+                    }
+                    is RefContextMenuAction.CreateBranch -> {
+                        repositoryScreenViewModel.createBranchFromCommit(action.branchName, action.commit.id)
+                    }
+                    is RefContextMenuAction.Reset -> {
+                        repositoryScreenViewModel.reset(action.commit.id, action.mode)
+                    }
+                    is RefContextMenuAction.Revert -> {
+                        repositoryScreenViewModel.revert(action.commit.id)
+                    }
+                    is RefContextMenuAction.CreateTag -> {
+                        repositoryScreenViewModel.createTag(action.tagName, action.commit.id)
+                    }
+                }
+            },
+            onShowInputDialog = { title, placeholder, onConfirm ->
+                inputDialogState = InputDialogState(title, placeholder, onConfirm)
+            }
+        )
+
         // Input dialog
         inputDialogState?.let { state ->
             InputDialog(
@@ -269,6 +334,7 @@ private fun CenterPanel(
     selectedItem: CommitOrWip?,
     onItemClick: (CommitOrWip) -> Unit,
     onItemRightClick: (Commit, Offset) -> Unit,
+    onRefRightClick: (RefCommit, Commit, Offset) -> Unit,
     onLoadMore: () -> Unit,
     hasMore: Boolean,
     localBranches: List<Branch>,
@@ -333,6 +399,7 @@ private fun CenterPanel(
                 onItemRightClick(commitData.info, offset)
             }
         },
+        onRefRightClick = onRefRightClick,
         onLoadMore = onLoadMore,
         hasMore = hasMore
     )

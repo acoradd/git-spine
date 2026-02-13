@@ -270,6 +270,41 @@ class RepositoryScreenViewModel(
         }
     }
 
+    // Ref actions
+    fun checkoutBranch(branchName: String) {
+        viewModelScope.launch {
+            gitRepository.checkoutBranch(branchName)
+            refreshAll()
+        }
+    }
+
+    fun deleteBranch(branchName: String) {
+        viewModelScope.launch {
+            gitRepository.deleteBranch(branchName)
+            refreshAll()
+        }
+    }
+
+    fun deleteTag(tagName: String) {
+        viewModelScope.launch {
+            gitRepository.deleteTag(tagName)
+            loadTags()
+        }
+    }
+
+    fun pushBranch(branchName: String) {
+        viewModelScope.launch {
+            gitRepository.pushBranch(branchName)
+        }
+    }
+
+    fun pullMergeBranch(branchName: String) {
+        viewModelScope.launch {
+            gitRepository.pullMergeBranch(branchName)
+            refreshAll()
+        }
+    }
+
     private fun refreshAll() {
         loadCommits(reset = true)
         loadLocalBranches()

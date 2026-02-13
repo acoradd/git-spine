@@ -58,4 +58,11 @@ interface GitRepository {
     suspend fun reset(commitId: String, mode: ResetMode)
     suspend fun revert(commitId: String)
     suspend fun createTag(name: String, commitId: String)
+
+    // Ref operations
+    suspend fun checkoutBranch(branchName: String)
+    suspend fun deleteBranch(branchName: String, force: Boolean = false)
+    suspend fun deleteTag(tagName: String)
+    suspend fun pushBranch(branchName: String)
+    suspend fun pullMergeBranch(branchName: String)
 }

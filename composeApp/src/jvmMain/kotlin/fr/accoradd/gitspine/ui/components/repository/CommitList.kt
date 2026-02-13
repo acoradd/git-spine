@@ -22,6 +22,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.isSecondaryPressed
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -82,6 +84,7 @@ fun CommitList(
     graphResult: GraphResult? = null,
     onCommitClick: (CommitData) -> Unit = {},
     onCommitRightClick: (CommitData, Offset) -> Unit = { _, _ -> },
+    onRefRightClick: (RefCommit, Commit, Offset) -> Unit = { _, _, _ -> },
     onLoadMore: () -> Unit = {},
     hasMore: Boolean = false,
 ) {
@@ -164,6 +167,7 @@ fun CommitList(
                             graphResult = graphResult,
                             onClick = { onCommitClick(commit) },
                             onRightClick = { offset -> onCommitRightClick(commit, offset) },
+                            onRefRightClick = { ref, offset -> onRefRightClick(ref, commit.info, offset) },
                             onWidthChanged = { columnId, newWidth ->
                                 columnWidths[columnId] = newWidth
                             },
@@ -270,6 +274,7 @@ private fun CommitRow(
     graphResult: GraphResult?,
     onClick: () -> Unit,
     onRightClick: (Offset) -> Unit,
+    onRefRightClick: (RefCommit, Offset) -> Unit,
     onWidthChanged: (String, Float) -> Unit,
     totalWidth: Float,
     horizontalGraphScrollState: ScrollState,
@@ -282,7 +287,6 @@ private fun CommitRow(
 
     val interactionSource = remember { MutableInteractionSource() }
     var imageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
-    var layoutCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
     LaunchedEffect(author.email) {
         val imageUrl = AppConfig.getGravatarUrl(author.email)
@@ -302,29 +306,12 @@ private fun CommitRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(28.dp)
-            .onGloballyPositioned { coordinates ->
-                layoutCoordinates = coordinates
-            }
             .background(
                 when {
                     commit.isSelected -> JewelTheme.defaultTitleBarStyle.colors.titlePaneButtonHoveredBackground
                     else -> Color.Transparent
                 }
             )
-            .pointerInput(commit.info.id) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        if (event.type == PointerEventType.Press &&
-                            event.button == PointerButton.Secondary
-                        ) {
-                            val localPosition = event.changes.firstOrNull()?.position ?: Offset.Zero
-                            val rootPosition = layoutCoordinates?.localToRoot(localPosition) ?: localPosition
-                            onRightClick(rootPosition)
-                        }
-                    }
-                }
-            }
             .clickable(onClick = onClick)
             .hoverable(interactionSource)
     ) {
@@ -338,6 +325,7 @@ private fun CommitRow(
                 val padding = if (column.id == "graph" || column.id === "branch") 0.dp else 12.dp
                 val commitColor = graphColorsAlpha.colors[(position ?: 0) % graphColorsAlpha.size].copy(alpha = graphColorsAlpha.alphaBranchBg)
 
+                var columnCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
                 Box(
                     modifier = Modifier
@@ -350,88 +338,32 @@ private fun CommitRow(
                                 else -> Modifier
                             }
                         )
+                        .then(
+                            // Right-click menu only on graph, message, and date columns
+                            if (column.id in listOf("graph", "message", "date")) {
+                                Modifier
+                                    .onGloballyPositioned { columnCoordinates = it }
+                                    .onPointerEvent(PointerEventType.Press) { event ->
+                                        if (event.buttons.isSecondaryPressed) {
+                                            val localPosition = event.changes.firstOrNull()?.position ?: Offset.Zero
+                                            val rootPosition = columnCoordinates?.localToRoot(localPosition) ?: localPosition
+                                            onRightClick(rootPosition)
+                                        }
+                                    }
+                            } else Modifier
+                        )
                         .padding(horizontal = padding),
                     contentAlignment = if (index == columns.size - 1) Alignment.CenterEnd else Alignment.CenterStart
                 ) {
                     when (column.id) {
                         "branch" -> {
                             if (commit.refs.isNotEmpty()) {
-                                Row(
-                                    modifier = Modifier.fillMaxSize(),
-                                    horizontalArrangement = Arrangement.Start,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Row(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(2.dp))
-                                            .weight(0.8f)
-                                            .background(commitColor)
-                                            .padding(horizontal = 4.dp, vertical = 0.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        val ref = commit.refs.first()
-                                        val isBranch = ref is Branch
-                                        val isLocal = isBranch && !ref.isRemote
-                                        val hasLocalBranch = isLocal && commit.refs.any {
-                                            it is Branch && it.isRemote && ref.name == it.name.substringAfter(
-                                                "/",
-                                                it.name
-                                            )
-                                        }
-                                        Tooltip(
-                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp).weight(1f),
-
-                                            tooltip = {
-                                                Text(
-                                                    text = if (isBranch && !isLocal) ref.name.substringAfter("/", ref.name) else ref.name,
-                                                    maxLines = 1
-                                                )
-                                            }
-                                        ) {
-                                            Text(
-                                                text = if (isBranch && !isLocal) ref.name.substringAfter("/", ref.name) else ref.name,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                                softWrap = false,
-                                                modifier = Modifier.fillMaxWidth(),
-                                                style = JewelTheme.defaultTextStyle.copy(fontSize = 12.sp)
-                                            )
-                                        }
-
-                                        if (isBranch) {
-                                            Row(
-                                                modifier = Modifier.width(if(isLocal && hasLocalBranch) 30.dp else 14.dp),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.End
-                                            ) {
-                                                Icon(
-                                                    key = if (isLocal) AllIconsKeys.Vcs.Branch else AllIconsKeys.Javaee.WebService,
-                                                    contentDescription = "",
-                                                    modifier = Modifier.size(14.dp)
-                                                )
-                                                if (isLocal && hasLocalBranch) {
-                                                    Spacer(modifier = Modifier.width(2.dp))
-
-                                                    Icon(
-                                                        key = AllIconsKeys.Javaee.WebService,
-                                                        contentDescription = "",
-                                                        modifier = Modifier.size(14.dp)
-                                                    )
-                                                }
-                                            }
-
-                                        }
-
-
-                                    }
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(0.2f)
-                                            .height(1.dp).background(commitColor)
-                                    )
-                                }
-
+                                RefBadgeList(
+                                    refs = commit.refs,
+                                    backgroundColor = commitColor,
+                                    onRefRightClick = onRefRightClick,
+                                    modifier = Modifier.fillMaxSize()
+                                )
                             }
                         }
 
