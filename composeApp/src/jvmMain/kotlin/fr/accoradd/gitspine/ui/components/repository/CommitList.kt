@@ -460,6 +460,19 @@ private fun CommitRow(
                             }
                         }
                     }
+
+                    ResizeColumnsDivider(
+                        index,
+                        columns,
+                        columnWidths,
+                        totalWidth,
+                        column,
+                        onWidthChanged,
+                        color = if (column.id === "graph") position?.let { graphColorsAlpha.colors[it % graphColorsAlpha.size].copy(alpha = graphColorsAlpha.alphaBorder) } else Color.Transparent,
+                        sliderContentModifier = if (column.id === "graph") Modifier.width(2.dp).padding(vertical = 2.dp) else null,
+                        sliderModifier = Modifier.align(Alignment.TopEnd),
+                        horizontalAlignment = Alignment.End
+                    )
                 }
             }
         }
