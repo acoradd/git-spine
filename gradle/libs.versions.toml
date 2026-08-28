@@ -11,7 +11,7 @@ koin = "4.0.4"
 jgit = "7.2.0.202503040940-r"
 jna = "5.17.0"
 jewel = "0.33.0-253.29795"
-jewel-icons = "252.28539.33"
+jewel-icons = "252.28539.108"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
