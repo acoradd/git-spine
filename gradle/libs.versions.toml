@@ -44,7 +44,7 @@ jewel-markdown-intUiStandaloneStyling = { group = "org.jetbrains.jewel", name = 
 jewel-icons = { module = "com.jetbrains.intellij.platform:icons", version.ref = "jewel-icons" }
 
 # Coil
-coil = { module = "io.coil-kt.coil3:coil-compose", version = "3.3.0" }
+coil = { module = "io.coil-kt.coil3:coil-compose", version = "3.6.2" }
 coil-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version = "3.3.0" }
 
 [plugins]
